@@ -668,6 +668,470 @@
       "level": "understand",
       "pool": "practice",
       "weight": 1
+    },
+    {
+      "id": "q-d3-span-tree",
+      "type": "single",
+      "prompt": "Nabd's logs say a request took 500 ms. What does a trace add?",
+      "options": [
+        "The cost of the request",
+        "The average time of all requests that day",
+        "The text of the answer",
+        "The time of each step of that request, nested under it"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "A trace holds one span per step with its parent and duration, so the slow step is visible.",
+      "misconceptions": [
+        "Token counts can be attributes, but the point is the step breakdown",
+        "That is a metric, not a trace",
+        "Content is not what makes a trace useful, and it may hold personal data",
+        ""
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 1,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-slowest-step",
+      "type": "single",
+      "prompt": "Ten traces show retrieval at 71% of request time and model calls at 27%. Where do you start?",
+      "options": [
+        "Find why retrieval is slow and fix it, then measure again",
+        "Add replicas",
+        "Swap to a faster model",
+        "Remove the tool calls"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "Fix the largest step and confirm with the same spans.",
+      "misconceptions": [
+        "",
+        "More copies repeat the same slow work",
+        "Optimises the smaller part",
+        "Tools are 2% of the time"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 1,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-span-pii",
+      "type": "single",
+      "prompt": "A developer wants to record every crew question as a span attribute. Questions sometimes contain a customer's phone number. What is the rule?",
+      "options": [
+        "Record it: traces are internal",
+        "Record it only after redaction, and only if a purpose needs it",
+        "Record it only on error spans",
+        "Record it and delete the trace store yearly"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "Data that leaves the service in traces is collected and stored; keep only what the purpose needs.",
+      "misconceptions": [
+        "Traces are copied and kept by many people",
+        "",
+        "Errors can contain personal data too",
+        "Stores personal data without a purpose for a year"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 1,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-conventions",
+      "type": "single",
+      "prompt": "Which span name follows the OpenTelemetry GenAI conventions for one model call of Nabd?",
+      "options": [
+        "nabd.model.call",
+        "LLM",
+        "chat steady",
+        "retrieval steady"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "The conventions name a span by operation and target, such as chat with the model name.",
+      "misconceptions": [
+        "A private name back ends do not recognise",
+        "Not an operation name and carries no target",
+        "",
+        "Retrieval is a different operation"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 1,
+      "level": "remember",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-persistence",
+      "type": "single",
+      "prompt": "A drift monitor alerts every hot day in summer. Which change removes these alarms but still catches a shift that lasts?",
+      "options": [
+        "Raise the threshold to 2.0",
+        "Remove temperature from the monitor",
+        "Monitor once a month",
+        "Alert only on three judged days in a row"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "Persistence filters one-day spikes and keeps sustained moves.",
+      "misconceptions": [
+        "Also hides real shifts",
+        "Loses a feature that matters to the model",
+        "Delays real alerts by weeks",
+        ""
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 2,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-rolling",
+      "type": "single",
+      "prompt": "The monitor compares each day with the previous seven days. What can it no longer see?",
+      "options": [
+        "A slow drift over months",
+        "A one-day spike",
+        "A step change overnight",
+        "A day with few feeders"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "A rolling reference absorbs slow change, so keep a fixed comparison with the training data as well.",
+      "misconceptions": [
+        "",
+        "It sees it; persistence decides not to alert",
+        "A step stands out against the previous week",
+        "The minimum sample handles that"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 2,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-skew",
+      "type": "single",
+      "prompt": "Serving load jumps 12% overnight while temperatures fall. The SCADA team recalibrated meters that night. What should Lamya do?",
+      "options": [
+        "Retrain at once on the new values",
+        "Treat it as skew and fix the data with the SCADA team before any retraining",
+        "Ignore it: load is only one feature",
+        "Lower the alert threshold"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "Serving computing a feature differently from training is skew; fix the data, not the model.",
+      "misconceptions": [
+        "Teaches the model a measurement error",
+        "",
+        "A wrong feature changes every score",
+        "The alert already worked"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 2,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-min-sample",
+      "type": "single",
+      "prompt": "On maintenance-freeze days only 120 feeders are scored instead of 400. Why does the monitor not judge those days?",
+      "options": [
+        "The feeders are not important",
+        "The data is corrupt on those days",
+        "A small sample makes the statistic noisy",
+        "The model is not used on those days"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "A drift statistic on a small sample moves by chance; a minimum sample avoids false alarms.",
+      "misconceptions": [
+        "Importance is not the reason",
+        "The data is valid, just small",
+        "",
+        "It still scores the 120"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 2,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-redact-when",
+      "type": "single",
+      "prompt": "Where in the online evaluation should personal data be removed from Nabd's traces?",
+      "options": [
+        "Before they are shown to reviewers",
+        "Never: the grader needs it",
+        "After a year",
+        "Before they are stored"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "Data that is never stored needs no access rule and no deletion.",
+      "misconceptions": [
+        "Stored data can still be copied and read",
+        "The grader needs the answer and context, not the customer",
+        "Keeps data without purpose",
+        ""
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 3,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-correct-rate",
+      "type": "single",
+      "prompt": "A grader fails 29% of sampled answers. On labelled traces it fails 90% of bad answers and passes 82% of good ones. About what failure rate do you report?",
+      "options": [
+        "15%, with the raw rate and the sample sizes",
+        "29%",
+        "10%",
+        "32%"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "(0.29 + 0.82 - 1) / (0.90 + 0.82 - 1) is about 0.15.",
+      "misconceptions": [
+        "",
+        "Reports the grader's reading as the true rate",
+        "Uses one minus sensitivity, which is not the rate",
+        "Divides by sensitivity and ignores false failures"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 3,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-review-passes",
+      "type": "single",
+      "prompt": "Why does the review queue include a few answers the grader passed?",
+      "options": [
+        "To keep reviewers busy",
+        "To see what the grader lets through and keep its numbers current",
+        "To check the grader's speed",
+        "Because passes are usually wrong"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "Random passes measure the grader's misses and refresh its sensitivity.",
+      "misconceptions": [
+        "Not a purpose",
+        "",
+        "Speed is not reviewed by people",
+        "Most passes are right"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 3,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-retention",
+      "type": "single",
+      "prompt": "Traces are kept 3 days for debugging. Some are in the review queue on day 7. What does the retention rule do with them?",
+      "options": [
+        "Deletes them with the others",
+        "Keeps them forever",
+        "Holds them until reviewed, then deletes them",
+        "Keeps all traces until the queue is empty"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "Keep data while a stated purpose needs it, then destroy it.",
+      "misconceptions": [
+        "Removes data a reviewer still needs",
+        "No purpose after review",
+        "",
+        "Holds unrelated data"
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 3,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-labels-wait",
+      "type": "single",
+      "prompt": "A drift alert fires on 20 September for August's feeders. August's labels are complete on 2 October. What does the retraining policy do?",
+      "options": [
+        "Promote the last challenger",
+        "Retrain now on the first cut",
+        "Ignore the alert",
+        "Wait for complete labels, then retrain and gate"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "The missing labels are the high-risk mountain feeders; training without them teaches the gap.",
+      "misconceptions": [
+        "Not evidence for this change",
+        "Learns the gap where inspections are late",
+        "Discards a real signal",
+        ""
+      ],
+      "lo": [
+        "LO2"
+      ],
+      "day": "day3",
+      "session": 4,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-approval",
+      "type": "single",
+      "prompt": "The retraining pipeline trained a model that passed the gate. Who may promote it?",
+      "options": [
+        "The model owner, recording the evidence on the version",
+        "Any engineer on call",
+        "The pipeline itself, since the gate passed",
+        "Nobody until the next quarter"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "A person who answers for the model approves, and the approval travels with the version.",
+      "misconceptions": [
+        "",
+        "Not the model owner",
+        "The requester approves its own request",
+        "Delays without reason"
+      ],
+      "lo": [
+        "LO2"
+      ],
+      "day": "day3",
+      "session": 4,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-retrain-cost",
+      "type": "single",
+      "prompt": "A retraining run costs 6 SAR of compute and the classifier has 26 SAR left this month. A second drift-triggered retrain is proposed. What else should the decision weigh?",
+      "options": [
+        "Nothing: compute is within budget",
+        "The reviewer's time and the risk of a worse model in a region",
+        "Only the number of trees",
+        "The price of tokens"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "Compute is the small part; review and risk are the larger costs of a retrain.",
+      "misconceptions": [
+        "Ignores the review time and the risk",
+        "",
+        "Not a cost",
+        "The classifier uses no tokens"
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day3",
+      "session": 4,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-skew-retrain",
+      "type": "single",
+      "prompt": "A drift alert on load was triaged as skew from recalibrated meters. What should the retraining trigger do?",
+      "options": [
+        "Retrain early to adapt",
+        "Retrain at the next schedule with the skewed data",
+        "Not retrain; the data owner fixes the data",
+        "Lower the gate tolerance"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "Skew is a data problem; retraining on it bakes the error into the model.",
+      "misconceptions": [
+        "Learns the measurement error",
+        "Same error, later",
+        "",
+        "Unrelated to the cause"
+      ],
+      "lo": [
+        "LO2"
+      ],
+      "day": "day3",
+      "session": 4,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
     }
   ]
 }
