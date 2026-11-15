@@ -39,7 +39,9 @@ Participants run three systems of a fictional electricity distribution company i
 
 ## Case study
 
-**REPLACE: the name of the fictional organisation every lab works on.** REPLACE: two sentences on the case study and its synthetic data
+**Wahaj Electricity Distribution Company.** Wahaj is a fictional electricity distributor with six regions and 2,400 feeders that runs three systems: a feeder fault-risk classifier retrained on monthly batches, Nabd, a field-crew assistant over the maintenance manuals with two tools, and Mubadir, an outage-ticket agent. Participants version, gate, release, observe and repair all three on synthetic data generated with a fixed seed: twelve monthly batches with one corrupt and one drifted, two versions of the manuals, a replayed month of traffic with two planted shifts, recorded agent traces with one incident, and a month of cost logs.
+
+The people of the case: Dhafer Al-Hazzani (MLOps platform lead, owns releases), Lamya Al-Muqbil (owner of the fault-risk model), Saqer Al-Dossary (field operations supervisor), Mutab Al-Shalhoub (control-room duty engineer, approves risky agent actions) and Nouf Al-Sadhan (data protection officer). They and the company are invented.
 
 <!-- academy:labs -->
 ## Labs
@@ -70,7 +72,7 @@ Every lab is a notebook in `labs/`. Open it in Google Colab from the course page
 
 A simulated release week in which a corrupt batch, a provider model update and an agent incident arrive; the participant gates, ships or rolls back each and submits a public repository with pipeline logs, a release log and a runbook, then defends it for eight minutes while the assessor injects one further fault
 
-**Submission:** REPLACE: what participants submit and how: a public repository link, or a shared folder for a course without code
+**Submission:** A public GitHub repository with the pipeline logs, the release log, the runbook and timestamped trace files of the release week, built from the starter in labs/capstone/. Then an eight-minute live defence in which the assessor injects one further fault and the participant diagnoses it from traces and logs.
 
 ## Prerequisites
 
@@ -119,7 +121,7 @@ Each line is a capability; the examples are interchangeable.
 
 ### National references
 
-- Personal Data Protection Law and its implementing regulations: REPLACE: the address of the official text
-- NDMO Data Classification Policy: REPLACE: the address of the official text
-- NDMO Data Management and Personal Data Protection Standards: REPLACE: the address of the official text
-- National AI Risk Management Framework: REPLACE: the address of the official text
+- Personal Data Protection Law and its implementing regulations: https://sdaia.gov.sa/en/SDAIA/about/Documents/PersonalDataProtectionLaw.pdf (implementing regulation: https://sdaia.gov.sa/en/SDAIA/about/Documents/ImplementingRegulationPersonalDataProtectionLaw.pdf)
+- NDMO Data Classification Policy: https://sdaia.gov.sa/en/SDAIA/about/Documents/DataClassificationPolicy.pdf
+- NDMO Data Management and Personal Data Protection Standards: https://sdaia.gov.sa/en/SDAIA/about/Documents/DataManagementPersonalDataProtectionStandards.pdf
+- National AI Risk Management Framework: issued by SDAIA; no official address was found on SDAIA's regulations page when this course was built, so it is cited by name only

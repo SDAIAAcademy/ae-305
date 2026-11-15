@@ -1,158 +1,497 @@
+<!-- ======================= OPENING ======================= -->
 <section class="slide title" id="title" data-auto="title">
-  <aside class="notes">REPLACE: welcome; introduce yourself; one question to the room that calibrates the pace; the rhythm of the day</aside>
+  <aside class="notes"><p>Welcome the room. Ask two questions for a show of hands: who has a model in production today, and who has been woken by one. This is a 300-level course: participants have deployed a service (AE-205), built on language models (AE-203) and built a tool-calling agent (AE-302). The week is about running all three kinds of system, not building them.</p></aside>
 </section>
 
 <section class="slide" id="agenda" data-auto="agenda"></section>
 
-<!-- Session 1 -->
-
-<section class="slide section" id="s1" data-auto="section" data-session="1"></section>
-
-<section class="slide" id="s1-idea" data-lo="LO1">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
-  <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
-    </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
+<section class="slide" data-label="The week" id="four-days-three-systems">
+  <div class="kicker">The course at a glance</div>
+  <h2>Four days of operating three systems, then a release week as the capstone</h2>
+  <div class="cols cols-4 gap-s">
+    <div class="card c-teal"><h4>Day 1 · Version and build</h4><p class="small mb0">The release unit, the registry, validation, promotion gates.</p></div>
+    <div class="card c-cyan"><h4>Day 2 · Deliver</h4><p class="small mb0">Delivery with approval, language model releases, canary and rollback, cost.</p></div>
+    <div class="card c-coral"><h4>Day 3 · Observe</h4><p class="small mb0">Traces, drift monitors, online evaluation, retraining policies.</p></div>
+    <div class="card c-purple"><h4>Day 4 · Operate agents</h4><p class="small mb0">Bundles, durable execution, replay, budgets and kill switches.</p></div>
   </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+  <div class="callout tip mt"><b>Day 5 · Capstone.</b> A simulated release week: a corrupt batch, a provider model update and an agent incident arrive. You gate, ship or roll back each, then defend it with one more fault injected live.</div>
+  <aside class="notes"><p>One sentence per day. Point out the rubric now: pipelines and gates 25, delivery and rollback 20, observability 20, agent operations 20, runbook and reproducibility 15. Each day builds one or two of them.</p></aside>
 </section>
 
-<section class="slide" id="s1-steps" data-lo="LO1">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
-  <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+<section class="slide" data-label="Case study" id="wahaj-three-systems">
+  <div class="kicker">One case study all week</div>
+  <h2>Wahaj Electricity Distribution Company runs three systems in production</h2>
+  <p class="lead">A fictional distributor: six regions, 4,800 feeders, crews in the field and a control room. You operate:</p>
+  <div class="cols cols-3 gap-s mt-s">
+    <div class="card c-teal flat"><h4>Fault-risk classifier</h4><p class="small mb0">Scores every feeder monthly; the top of the list is inspected first. Retrained on monthly batches.</p></div>
+    <div class="card c-cyan flat"><h4>Nabd <span class="ar">نبض</span></h4><p class="small mb0">The field-crew assistant: retrieval over the maintenance manuals and two tools.</p></div>
+    <div class="card c-coral flat"><h4>Mubadir <span class="ar">مبادر</span></h4><p class="small mb0">The outage-ticket agent: finds the customer, checks the outage, opens or closes tickets.</p></div>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <aside class="notes"><p>Name the people once: Dhafer Al-Hazzani leads the MLOps platform and owns releases; Lamya Al-Muqbil owns the fault-risk model; Saqer Al-Dossary supervises field operations and speaks for the crews; Mutab Al-Shalhoub is the control-room duty engineer who approves risky agent actions; Nouf Al-Sadhan is the data protection officer. All data is synthetic, generated with a fixed seed by labs/prepare_data.py. Do not reveal the planted problems yet.</p></aside>
+</section>
+
+<section class="slide" data-label="How we work" id="ai-policy-and-models">
+  <div class="kicker">How this course works</div>
+  <h2>Operate with evidence, on free hosted models, with AI as a tutor</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-navy"><h4>Evidence first</h4><p class="small mb0">Every release decision in the labs is taken on a log, a metric or a trace, and written down.</p></div>
+    <div class="card c-teal"><h4>No model on your laptop</h4><p class="small mb0">Language model labs call a free hosted model, or a scripted stand-in when no key works. Training runs on a laptop processor or Colab.</p></div>
+    <div class="card c-coral"><h4>AI as a tutor</h4><p class="small mb0">An assistant may explain logs and give hints. It does not write your pipeline or alert definitions.</p></div>
+  </div>
+  <div class="callout warn small mt"><b>Supervised checks.</b> The entry and exit checks are done without AI: reading a pipeline log and a trace, and choosing a rollback trigger.</div>
+  <aside class="notes"><p>The AI policy comes from the catalog entry: AI off for the supervised checks, AI as a tutor in the labs, anything in the capstone, which is then defended live against an injected fault. Say why: the defence asks each participant to diagnose an unseen fault from traces and logs, alone.</p></aside>
+</section>
+
+<section class="slide" data-label="Setup check" id="setup-check">
+  <div class="kicker">Before Session 1</div>
+  <h2>One notebook proves your setup: 00_setup_check</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="terminal"><code class="language-bash">git clone https://github.com/SDAIAAcademy/ae-305
+cd ae-305/labs
+uv sync
+uv run jupyter lab   # open 00_setup_check.ipynb</code></pre>
+    <ul class="bullets small">
+      <li>It lists the packages, finds the twelve monthly batches, the manuals and the recorded agent sessions.</li>
+      <li>It asks Nabd one question. "scripted stand-in" is a pass: every lab runs on it.</li>
+      <li>In Colab, open the notebook from the course page; the first cell installs what Colab lacks.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>Run it on the projector first. A free OpenRouter key in labs/.env (or the Colab Secrets panel) switches the language model labs to a free hosted model; without one they run on the scripted stand-in, which is deterministic and is what the course's own runs used. On Windows, if an import fails with a long path, set UV_PROJECT_ENVIRONMENT to a short folder before uv sync.</p></aside>
+</section>
+
+<!-- ======================= SESSION 1 ======================= -->
+<section class="slide section" id="s1" data-auto="section" data-session="1"></section>
+
+<section class="slide" data-label="Same code, new behaviour" id="behaviour-changed-code-did-not" data-lo="LO1">
+  <div class="kicker">Two runs, two weeks apart</div>
+  <h2>Nothing was deployed, yet two systems behave differently</h2>
+  <div class="cols cols-2">
+    <div class="stack">
+      <div class="stat"><div class="big">212 → 268</div><div class="lbl">feeders the classifier flagged for inspection</div></div>
+      <div class="stat"><div class="big">3</div><div class="lbl">of Nabd's weekly probe answers changed</div></div>
+    </div>
+    <div class="card c-coral flat"><h4>The question of the day</h4><p class="small mb0">What exactly was running on each date? If you cannot answer from a file, you cannot explain, reproduce or roll back.</p></div>
+  </div>
+  <aside class="notes"><p>The numbers are from data/runs/run_A and run_B, which Lab 1.1 diffs. Ask the room for hypotheses before showing anything: retraining, a config change, a model change. Keep the list on the board and close it at the end of the session.</p></aside>
+</section>
+
+<section class="slide" data-label="Release unit" id="what-changes-behaviour" data-lo="LO1">
+  <div class="kicker">The release unit</div>
+  <h2>Seven things change behaviour, and all seven are versioned together</h2>
+  <table class="t small">
+    <tr><th>Part</th><th>Classifier</th><th>Nabd</th><th>Mubadir</th></tr>
+    <tr><td>Data</td><td>training snapshot</td><td>the manuals</td><td>customer and outage services</td></tr>
+    <tr><td>Code</td><td>trainer, features</td><td>retrieval, tool code</td><td>harness</td></tr>
+    <tr><td>Configuration</td><td>threshold</td><td>k, temperature</td><td>step limit, retries</td></tr>
+    <tr><td>Model</td><td>registry version</td><td>provider model id</td><td>provider model id</td></tr>
+    <tr><td>Prompt</td><td></td><td>system prompt</td><td>system prompt</td></tr>
+    <tr><td>Retrieval index</td><td></td><td>index build</td><td></td></tr>
+    <tr><td>Tool schemas</td><td></td><td>two tools</td><td>six tools</td></tr>
+  </table>
+  <aside class="notes"><p>Walk one row at a time. The classic ML pipeline versions the first four; language model systems add the last three, and an agent adds its sandbox policy (Day 4). A release is the set, not the model alone.</p></aside>
+</section>
+
+<section class="slide" data-label="Pinned ids" id="alias-is-a-pointer" data-lo="LO1">
+  <div class="kicker">Provider model identifiers</div>
+  <h2>An alias is a pointer that the provider can move</h2>
+  <div class="cols cols-2">
+    <div class="trace s">
+      <div class="ev call"><b>run A asked</b><code>hosted/steady-latest</code></div>
+      <div class="ev result"><b>answered by</b><code>hosted/steady-2026-09-12</code></div>
+      <div class="ev call"><b>run B asked</b><code>hosted/steady-latest</code></div>
+      <div class="ev error"><b>answered by</b><code>hosted/steady-2026-10-14</code></div>
+    </div>
+    <ul class="bullets small">
+      <li>Release files that name the alias look identical on both dates.</li>
+      <li>The response says which model answered: record that field on every call.</li>
+      <li>Pin a dated identifier in the release, and change it only through a release.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>The model names are the course's synthetic ones. Real providers publish dated snapshots and moving aliases; check each provider's model page for its current names before the cohort, since they change often. The OpenAI-shaped APIs return the serving model in the response's model field.</p></aside>
+</section>
+
+<section class="slide" data-label="Manifest" id="manifest-by-hash" data-lo="LO1">
+  <div class="kicker">Lab 1.1 · steps 2 and 3</div>
+  <h2>The manifest hashes every part; its own id is the hash of all of them</h2>
+  <pre class="code s" data-file="Lab 1.1"><code class="language-python">parts = {
+  "classifier": {"registry": "fault-risk@champion v3", "threshold": 0.35, ...},
+  "nabd": {"prompt": sha("prompt.txt"), "tools": sha("tools.json"),
+           "index": "v3", "index_fingerprint": Index("v3").fingerprint(),
+           "model_requested": rel["model"], "model_resolved": log["response_model"]},
+  "mubadir": {f: sha(f) for f in bundle_files},
+}
+release_id = "wahaj-" + sha_json(parts)[:12]</code></pre>
+  <aside class="notes"><p>A hand-kept version number changes when someone remembers to bump it. A content hash changes whenever anything changes, including what nobody thought about. Line endings are normalised before hashing so that a Windows and a Linux checkout agree; ask the room why that matters.</p></aside>
+</section>
+
+<section class="slide" data-label="The diff" id="diff-against-change-log" data-lo="LO1">
+  <div class="kicker">Lab 1.1 · step 4, from the course's run</div>
+  <h2>Diff the manifests, then ask the change log which changes were intended</h2>
+  <table class="t small">
+    <tr><th>Difference</th><th>Run A</th><th>Run B</th><th>In the change log?</th></tr>
+    <tr><td><code>classifier.threshold</code></td><td>0.35</td><td>0.30</td><td>yes: approved by Lamya</td></tr>
+    <tr class="hl"><td><code>nabd.model_resolved</code></td><td>steady-2026-09-12</td><td>steady-2026-10-14</td><td>no</td></tr>
+  </table>
+  <div class="callout warn small mt"><b>The unrecorded change.</b> Nobody at Wahaj changed Nabd. The provider moved the alias between the runs.</div>
+  <aside class="notes"><p>The lower threshold explains the extra flagged feeders; the moved alias explains the changed probe answers. Day 2 returns to this snapshot: Wahaj pins the old one and puts the new one through a canary, where it is rolled back.</p></aside>
+</section>
+
+<section class="slide" data-label="Maturity" id="maturity-manual-to-automated" data-lo="LO1">
+  <div class="kicker">Maturity from manual to automated</div>
+  <h2>Each level automates one more step and keeps the evidence of it</h2>
+  <div class="ladder" style="--n:4">
+    <div class="rung c-navy off"><b>Manual</b>a notebook and a copied file<small>no record</small></div>
+    <div class="rung c-teal on"><b>Versioned</b>manifest, registry, snapshots<small>Day 1</small></div>
+    <div class="rung c-cyan off"><b>Pipelined</b>validation, gates, delivery<small>Days 1 and 2</small></div>
+    <div class="rung c-coral off"><b>Closed loop</b>monitors trigger retraining<small>Day 3</small></div>
+  </div>
+  <aside class="notes"><p>Ask each table where their own organisation sits for its models, and for its language model applications: usually two different rungs. The point is that automation without the versioned rung automates confusion.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-1" data-lo="LO1">
+  <div class="kicker">Checkpoint</div>
+  <h2>Same model name, different answers</h2>
+  <div class="quiz" data-type="single" data-lo="LO1">
+    <p class="lead">Nabd's release file names <code>hosted/steady-latest</code> on both dates, and its answers changed. What should the release record so this cannot hide again?</p>
+    <div class="opts">
+      <div class="opt" data-why="Assumes the same name means the same model: an alias can move without any change on your side">Nothing more: the model name is already in the release</div>
+      <div class="opt" data-ok>The identifier the provider answered with, and a pinned dated identifier in the release</div>
+      <div class="opt" data-why="Treats a symptom as the version: the date of a call does not say which model served it">The date and time of every call</div>
+      <div class="opt" data-why="Moves the record into a channel nobody can diff or replay">A message to the team whenever answers look different</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The release must say what actually ran. A pinned identifier stops silent changes; recording the served model detects the ones that still happen.</div>
+  </div>
+  <aside class="notes"><p>Answer: B. If the room picks A, return to the trace slide: both runs asked the same thing and got different models.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-1-1" data-auto="lab" data-lab="1.1">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>Walk the room. Usual problems: hashing the release file only (it names the alias, so it never changes); hashing with Windows line endings, so a colleague's hash differs; matching change-log lines on whole paths instead of the field name. Ask early finishers which part of Mubadir they would add (the sandbox policy: Day 4).</p></aside>
 </section>
 
-<!-- Session 2 -->
-
+<!-- ======================= SESSION 2 ======================= -->
 <section class="slide section" id="s2" data-auto="section" data-session="2"></section>
 
-<section class="slide" id="s2-idea" data-lo="LO1">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
-  <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
-    </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
+<section class="slide" data-label="Registry" id="registry-recap" data-lo="LO1 LO2">
+  <div class="kicker">Recap from AE-205</div>
+  <h2>A registry holds versions; an alias says which version does which job</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Version</h4><p class="small mb0">Immutable: one trained model, its run, its metrics.</p></div>
+    <div class="card c-cyan"><h4>Alias</h4><p class="small mb0">Mutable: <code>champion</code>, <code>challenger-b</code>. Serving loads <code>models:/fault-risk@champion</code>.</p></div>
+    <div class="card c-coral"><h4>Tags</h4><p class="small mb0">The lineage: data snapshot, code hash, months, author, the reason for a promotion.</p></div>
   </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+  <aside class="notes"><p>AE-205 registered two versions; this course starts from lineage. In MLflow, aliases replace the older stage labels for deployment; the official registry page shows the models:/name@alias form. Kubeflow Model Registry is the other example of the slot. Sources: MLflow Model Registry documentation.</p></aside>
 </section>
 
-<section class="slide" id="s2-steps" data-lo="LO1">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
+<section class="slide" data-label="Lineage" id="lineage-chain" data-lo="LO1 LO2">
+  <div class="kicker">Lineage</div>
+  <h2>Follow the champion back to the exact data and code</h2>
   <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+    <div class="step c-navy"><b>Alias</b>champion</div>
+    <div class="arrow">→</div>
+    <div class="step c-teal"><b>Version 3</b>registered in August</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>Run</b>parameters and metrics</div>
+    <div class="arrow">→</div>
+    <div class="step c-coral"><b>Snapshot</b>d64921a1… (32,400 rows)</div>
+    <div class="arrow">→</div>
+    <div class="step c-purple"><b>Code</b>trainer hash</div>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <div class="callout tip small mt"><b>Reproduce before you trust.</b> A registry entry that cannot be rebuilt is a file with a name.</div>
+  <aside class="notes"><p>The snapshot hash and the row count are from the course's run of Lab 1.2. The code hash here is a hash of the training functions; in a real repository it is the commit, which the capstone records.</p></aside>
+</section>
+
+<section class="slide" data-label="Snapshots" id="content-addressed-data" data-lo="LO1 LO2">
+  <div class="kicker">Data versioning</div>
+  <h2>Name the data by its content, as DVC and lakeFS do</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="opskit.snapshot"><code class="language-python">data = df.to_csv(index=False).encode()
+h = sha256(data)
+path = store / h[:2] / f"{h}.csv"
+if not path.exists():
+    path.write_bytes(data)</code></pre>
+    <ul class="bullets small">
+      <li>The same rows give the same name on any machine.</li>
+      <li>A file called <code>training_latest.csv</code> says nothing about which rows it held last month.</li>
+      <li>The tools add remote storage, branches and garbage collection; the idea is this one line.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>DVC keeps files in a content-addressed cache and lets git track the small pointer files; lakeFS gives a data lake commits and branches. Both are examples of the slot; the lab uses the bare idea so it runs anywhere.</p></aside>
+</section>
+
+<section class="slide" data-label="Strings" id="params-come-back-as-strings" data-lo="LO2">
+  <div class="kicker">A trap in Lab 1.2</div>
+  <h2>Parameters come back from the tracking store as text</h2>
+  <div class="cols cols-2">
+    <div class="trace s">
+      <div class="ev result"><b>params</b><code>{"max_iter": "150", "learning_rate": "0.05", "recent_weight": "4"}</code></div>
+      <div class="ev error"><b>retrain</b><code>TypeError</code>, or worse, a silent change of meaning</div>
+    </div>
+    <div class="card c-coral flat"><h4>Convert on purpose</h4><p class="small mb0">Keep a typed list of the training parameters and convert each one when you read it back.</p></div>
+  </div>
+  <aside class="notes"><p>MLflow logs parameters as strings. "4" as a sample weight raises an error; a "False" string is truthy. Lab 1.2 has a NUMERIC map for this.</p></aside>
+</section>
+
+<section class="slide" data-label="Proof" id="reproduced-row-by-row" data-lo="LO1 LO2">
+  <div class="kicker">Lab 1.2 · step 4</div>
+  <h2>A reproduction matches on data hash, code hash and every prediction</h2>
+  <div class="cols cols-3">
+    <div class="stat"><div class="big">=</div><div class="lbl">snapshot hash rebuilt from the months</div></div>
+    <div class="stat"><div class="big">=</div><div class="lbl">training code hash</div></div>
+    <div class="stat"><div class="big">0.0</div><div class="lbl">largest difference in predicted risk on 1,200 holdout feeders</div></div>
+  </div>
+  <p class="small mt">The same code on "the latest training file" (up to August) gives another hash and predictions that differ by up to half the scale.</p>
+  <aside class="notes"><p>From the course's quick-mode run of Lab 1.2: the stretch's largest prediction difference was 0.54. Equal AUCs are not proof: two different models can share one. Row-by-row equality is.</p></aside>
+</section>
+
+<section class="slide" data-label="Environment" id="environment-is-part" data-lo="LO1">
+  <div class="kicker">What lineage still misses</div>
+  <h2>The library versions are part of the release too</h2>
+  <ul class="bullets small">
+    <li>The same code and data on another scikit-learn version can give different trees.</li>
+    <li><code>labs/uv.lock</code> pins every package; the capstone repository commits its own lock file.</li>
+    <li>A container image digest pins the operating system and Python as well (AE-205).</li>
+  </ul>
+  <div class="callout note small mt"><b>In Colab</b> the libraries are Colab's, so a rebuild there can differ from your laptop's by a few thousandths: that difference is an environment change, and now you can name it.</div>
+  <aside class="notes"><p>Ask: which of the seven parts of the release unit does the environment belong to? Code, in practice: record it with the code.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-2" data-lo="LO2">
+  <div class="kicker">Checkpoint</div>
+  <h2>Reproduced, or just similar?</h2>
+  <div class="quiz" data-type="single" data-lo="LO2">
+    <p class="lead">You retrain Lamya's model from the shared training file and get the same AUC to three decimals, but the data hash differs from the registry tag. What do you conclude?</p>
+    <div class="opts">
+      <div class="opt" data-why="Takes an equal metric as proof: different data can give the same AUC">It is reproduced: the AUC matches</div>
+      <div class="opt" data-why="Blames the hash instead of the data: the hash is exact by design">The hash function is unreliable across machines</div>
+      <div class="opt" data-why="Changes the record to match the attempt, which destroys the lineage">Update the registry tag to the new hash</div>
+      <div class="opt" data-ok>It is a different model: rebuild the snapshot from the months in the lineage</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The snapshot hash names the exact rows. A different hash means different training data, whatever the metric says.</div>
+  </div>
+  <aside class="notes"><p>Answer: D. The shared file in the stretch held every batch up to August; the champion was trained on November to July.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-1-2" data-auto="lab" data-lab="1.2">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>The setup cell builds the registry and takes about a minute; start it before you finish talking. Usual problems: parameters left as strings; comparing AUC only; loading "latest" instead of the alias. In Colab the first cell installs MLflow, which takes another minute.</p></aside>
 </section>
 
-<!-- Session 3 -->
-
+<!-- ======================= SESSION 3 ======================= -->
 <section class="slide section" id="s3" data-auto="section" data-session="3"></section>
 
-<section class="slide" id="s3-idea" data-lo="LO2">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
+<section class="slide" data-label="Bad batch" id="corrupt-batch-trains-fine" data-lo="LO2">
+  <div class="kicker">The September batch</div>
+  <h2>A broken batch trains without an error</h2>
   <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
+    <ul class="bullets small">
+      <li>Al-Hadba's load arrived as a fraction: feeder F-0801 reads <code>0.815</code>, not 81.5.</li>
+      <li>36 rows arrived twice.</li>
+      <li>14 Al-Sahil rows carry the code <code>"SAH "</code>, with a trailing space.</li>
     </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
+    <div class="card c-coral flat"><h4>Training does not complain</h4><p class="small mb0">Every value is a valid number or string. The model learns that Al-Hadba never has load, and its metric on the same broken data can look fine.</p></div>
   </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+  <aside class="notes"><p>The three faults are the planted problems of data/batches/feeders_2026-09.csv. Ask: which one would a metric catch? None reliably: that is why the contract is checked before training, not after.</p></aside>
 </section>
 
-<section class="slide" id="s3-steps" data-lo="LO2">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
-  <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+<section class="slide" data-label="Contract" id="data-contract" data-lo="LO2">
+  <div class="kicker">Data contracts</div>
+  <h2>A contract says what every row and every batch must be</h2>
+  <div class="cols cols-2">
+    <div class="card c-teal"><h4>Row rules</h4><p class="small mb0">Types, patterns (<code>^F-\d{4}$</code>), allowed values, physical ranges (load 20 to 150 percent of rating), no nulls.</p></div>
+    <div class="card c-cyan"><h4>Batch rules</h4><p class="small mb0">One row per feeder, every feeder present (within 2%), the month the file claims.</p></div>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <div class="callout tip small mt"><b>Agree it with the data owner.</b> The SCADA export team signs the contract; your pipeline enforces it on every delivery.</div>
+  <aside class="notes"><p>The contract is a shared promise, not a private check: the report goes back to the owner of the source. The ranges are physical limits agreed with engineering, not statistics of last month.</p></aside>
+</section>
+
+<section class="slide" data-label="pandera" id="contract-as-schema" data-lo="LO2">
+  <div class="kicker">Lab 1.3 · step 1</div>
+  <h2>The contract as a pandera schema</h2>
+  <pre class="code s" data-file="Lab 1.3"><code class="language-python">import pandera.pandas as pa
+SCHEMA = pa.DataFrameSchema({
+    "feeder_id": pa.Column(str, pa.Check.str_matches(r"^F-\d{4}$")),
+    "region": pa.Column(str, pa.Check.isin(["RIM", "HAD", "SAH", "WAD", "JAB", "NAK"])),
+    "load_peak_pct": pa.Column(float, pa.Check.in_range(20, 150)),
+    "fault_30d": pa.Column(int, pa.Check.isin([0, 1])),
+    ...
+}, strict=True)
+SCHEMA.validate(df, lazy=True)   # every failure, not the first</code></pre>
+  <aside class="notes"><p>pandera is one example of the validation slot; recent versions import the pandas API from pandera.pandas. strict=True also fails on an unexpected column. lazy=True collects every failure into one report: the data owner fixes all of them in one delivery.</p></aside>
+</section>
+
+<section class="slide" data-label="Stops" id="validation-step-stops-run" data-lo="LO2">
+  <div class="kicker">Lab 1.3 · step 3</div>
+  <h2>Validation is a step that can stop the run</h2>
+  <div class="flow">
+    <div class="step c-navy"><b>load</b>the batch</div>
+    <div class="arrow">→</div>
+    <div class="step c-coral"><b>validate</b>contract and batch rules</div>
+    <div class="arrow">→</div>
+    <div class="step c-teal"><b>train</b>only if valid</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>gate</b>Session 4</div>
+  </div>
+  <p class="small mt">A failed validation raises a stop, writes a report, and leaves the champion untouched. An orchestrator (Prefect, Airflow, Kubeflow Pipelines) records the run as stopped, not failed.</p>
+  <aside class="notes"><p>The lab's K.run_flow is a twenty-line stand-in for an orchestrator, so the lab runs in Colab without a server. Map it aloud: a step is a task, run_flow is a flow, StopRun is a deliberate stop. Stopped and failed differ: stopped means the pipeline did its job.</p></aside>
+</section>
+
+<section class="slide" data-label="Three batches" id="three-batches-result" data-lo="LO2">
+  <div class="kicker">Lab 1.3 · step 4, from the course's run</div>
+  <h2>July and August train; September stops at validation</h2>
+  <div class="trace s">
+    <div class="ev final"><b>2026-07</b>load ok · validate ok · train ok → SUCCEEDED</div>
+    <div class="ev final"><b>2026-08</b>load ok · validate ok · train ok → SUCCEEDED</div>
+    <div class="ev error"><b>2026-09</b>load ok · validate STOPPED: 3 contract problems</div>
+    <div class="ev result"><b>report</b>36 duplicate feeder_id rows · load_peak_pct: 807 rows outside 20 to 150 · region: 14 rows not an allowed code</div>
+  </div>
+  <aside class="notes"><p>Real output of the solution run. 807 rather than 800 because duplicated Al-Hadba rows fail the range too. August is the drifted month: it passes the contract, because drift is not corruption. Day 3 deals with drift.</p></aside>
+</section>
+
+<section class="slide" data-label="Not a fix" id="report-dont-repair" data-lo="LO2">
+  <div class="kicker">What the pipeline must not do</div>
+  <h2>Report the fault to the owner; do not quietly repair it</h2>
+  <div class="cols cols-2">
+    <div class="card c-coral flat"><h4>Quiet repairs</h4><p class="small mb0">Dropping duplicates, multiplying small loads by 100, stripping spaces: each hides a broken export that will break again.</p></div>
+    <div class="card c-teal flat"><h4>Stop, quarantine, report</h4><p class="small mb0">Keep the failing rows apart, send the counts and one example, retrain when the corrected batch arrives.</p></div>
+  </div>
+  <aside class="notes"><p>The stretch writes the quarantine file and the three-line report. Ask: who decides that a load of 0.86 means 86 percent? The data owner, not the pipeline.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-3" data-lo="LO2">
+  <div class="kicker">Checkpoint</div>
+  <h2>Where does validation go?</h2>
+  <div class="quiz" data-type="single" data-lo="LO2">
+    <p class="lead">A batch delivers one region's load as a fraction instead of a percentage. Where should the pipeline catch it?</p>
+    <div class="opts">
+      <div class="opt" data-ok>In a contract step before training, which stops the run and reports the column</div>
+      <div class="opt" data-why="Trusts the metric to notice: a model trained and scored on the same broken data can look fine">In the promotion gate, when the new model's AUC drops</div>
+      <div class="opt" data-why="Moves detection to the people the model serves, after the damage">When crews complain about the inspection list</div>
+      <div class="opt" data-why="Repairs a fault the owner has not confirmed and hides the broken export">In a cleaning step that multiplies values below 2 by 100</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The contract names the broken column before any model is trained on it, and the report goes to the one team that can fix the source.</div>
+  </div>
+  <aside class="notes"><p>Answer: A. The gate is a second line, not the first.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-1-3" data-auto="lab" data-lab="1.3">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>Usual problems: reading feeder_id as a number; checking ranges with a tolerance copied from last month's data instead of the agreed physical limits; validating eagerly and reporting one failure. If a participant's schema fails on July, the July batch is the reference: their schema is wrong.</p></aside>
 </section>
 
-<!-- Session 4 -->
-
+<!-- ======================= SESSION 4 ======================= -->
 <section class="slide section" id="s4" data-auto="section" data-session="4"></section>
 
-<section class="slide" id="s4-idea" data-lo="LO2">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
+<section class="slide" data-label="Salt fog" id="salt-fog-drift" data-lo="LO2">
+  <div class="kicker">August in Al-Sahil</div>
+  <h2>Salt fog started tripping coastal lines, and the champion had never seen it</h2>
   <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
+    <ul class="bullets small">
+      <li>From August, overhead feeders within 10 km of the coast fault far more often.</li>
+      <li>The champion was trained on November to July: distance to the coast never mattered.</li>
+      <li>Two challengers were trained in October on February to August.</li>
     </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
+    <div class="stat"><div class="big">0.742</div><div class="lbl">champion's AUC in Al-Sahil on the August holdout (0.830 overall)</div></div>
   </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+  <aside class="notes"><p>Numbers from the course's full run of Lab 1.4 (quick mode gives slightly different values). The cause is planted in the generator; manual MM-11, which arrives with the index refresh on Day 2, describes insulator washing after salt fog warnings, so the two systems tell the same story.</p></aside>
 </section>
 
-<section class="slide" id="s4-steps" data-lo="LO2">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
-  <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+<section class="slide" data-label="Gate" id="champion-challenger-gate" data-lo="LO2">
+  <div class="kicker">Champion and challenger</div>
+  <h2>A challenger is promoted only when it beats the champion on the same holdout</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Same holdout</h4><p class="small mb0">The quarter of feeders no model trained on, in the newest month with complete labels.</p></div>
+    <div class="card c-cyan"><h4>Overall</h4><p class="small mb0">Better than the champion's AUC.</p></div>
+    <div class="card c-coral"><h4>By region</h4><p class="small mb0">No region more than 0.03 worse.</p></div>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <div class="callout note small mt"><b>Why regions.</b> Crews and customers live in regions. An average can hide a region that pays for everyone else's gain.</div>
+  <aside class="notes"><p>The responsible-use line of the entry: promotion gates check each region so a model that degrades for one area is not promoted. The tolerance is the noise of a region's AUC on 200 feeders; the stretch measures it with a bootstrap.</p></aside>
+</section>
+
+<section class="slide" data-label="The table" id="auc-by-region-table" data-lo="LO2">
+  <div class="kicker">Lab 1.4 · step 2, from the course's run</div>
+  <h2>Both challengers win overall; one loses Al-Jabal</h2>
+  <table class="t small">
+    <tr><th></th><th class="num">all</th><th class="num">RIM</th><th class="num">HAD</th><th class="num">SAH</th><th class="num">WAD</th><th class="num">JAB</th><th class="num">NAK</th></tr>
+    <tr><td>champion</td><td class="num">0.830</td><td class="num">0.889</td><td class="num">0.814</td><td class="num">0.742</td><td class="num">0.774</td><td class="num">0.879</td><td class="num">0.748</td></tr>
+    <tr class="hl"><td>challenger-a</td><td class="num">0.851</td><td class="num">0.888</td><td class="num">0.812</td><td class="num">0.917</td><td class="num">0.784</td><td class="num">0.810</td><td class="num">0.809</td></tr>
+    <tr><td>challenger-b</td><td class="num">0.872</td><td class="num">0.890</td><td class="num">0.815</td><td class="num">0.919</td><td class="num">0.779</td><td class="num">0.873</td><td class="num">0.811</td></tr>
+  </table>
+  <aside class="notes"><p>Full-mode run, holdout of 1,200 feeders in August. Cover the region columns first and ask the room to pick a challenger from "all" alone; then uncover Al-Jabal.</p></aside>
+</section>
+
+<section class="slide" data-label="Why A fails" id="first-cut-delayed-labels" data-lo="LO2">
+  <div class="kicker">The cause behind challenger A</div>
+  <h2>Challenger A learned from labels that had not arrived yet</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>The first cut of the August batch came before the inspections of the most wooded Al-Jabal feeders were entered.</li>
+      <li>Their faults read 0, so A learned that wooded mountain feeders are safe.</li>
+      <li>The complete batch came three weeks later; challenger B was trained on it.</li>
+    </ul>
+    <div class="card c-coral flat"><h4>A data problem, caught by a model gate</h4><p class="small mb0">No contract rule fails: 0 is a valid label. Only the regional comparison shows it.</p></div>
+  </div>
+  <aside class="notes"><p>The first cut is data/late_labels/feeders_2026-08_first_cut.csv: the top fifth of Al-Jabal feeders by vegetation have their faults set to 0. Day 3, Session 2 returns to delayed labels and Session 4 makes "labels complete" a condition of the retraining trigger.</p></aside>
+</section>
+
+<section class="slide" data-label="Promote" id="promote-by-alias" data-lo="LO2">
+  <div class="kicker">Lab 1.4 · step 4</div>
+  <h2>Promotion moves an alias, and the old champion stays one move away</h2>
+  <pre class="code s" data-file="Lab 1.4"><code class="language-python">old = client.get_model_version_by_alias("fault-risk", "champion").version
+new = client.get_model_version_by_alias("fault-risk", "challenger-b").version
+client.set_registered_model_alias("fault-risk", "previous-champion", old)
+client.set_registered_model_alias("fault-risk", "champion", new)
+client.set_model_version_tag("fault-risk", new, "promoted_reason",
+    "passed overall and in every region (holdout 2026-08, tolerance 0.03)")</code></pre>
+  <aside class="notes"><p>Serving loads models:/fault-risk@champion, so this is the release. A rollback is the same call with the versions swapped. The reason tag is the audit record the entry asks for: every release decision is logged.</p></aside>
+</section>
+
+<section class="slide" data-label="Noise" id="tolerance-is-noise" data-lo="LO2">
+  <div class="kicker">The tolerance</div>
+  <h2>A rule with no tolerance rejects every challenger on noise</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>200 holdout feeders per region, 16 to 81 of them with a fault in August.</li>
+      <li>Resample them and a region's AUC moves by a few hundredths.</li>
+      <li>Challenger B is at most 0.006 worse in any region (Al-Jabal): noise. A is 0.069 worse there: not noise.</li>
+    </ul>
+    <div class="callout tip small"><b>Stretch.</b> Bootstrap the Al-Wadi gap of challenger B and read whether its interval includes zero.</div>
+  </div>
+  <aside class="notes"><p>Set the tolerance from a bootstrap on your own holdout, write it into the gate, and do not change it during a release because a candidate fails by a little: that is how gates erode.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-4" data-lo="LO2">
+  <div class="kicker">Checkpoint</div>
+  <h2>Better on average</h2>
+  <div class="quiz" data-type="single" data-lo="LO2">
+    <p class="lead">Challenger A beats the champion overall (0.851 against 0.830) and is 0.069 worse in Al-Jabal. The tolerance is 0.03. What happens?</p>
+    <div class="opts">
+      <div class="opt" data-why="Lets the average decide: a region's crews would inspect the wrong feeders">Promote it: the overall gain is larger than one region's loss</div>
+      <div class="opt" data-why="Changes the rule during a release to let a candidate through">Raise the tolerance to 0.07 for this release</div>
+      <div class="opt" data-ok>Reject it, record the region and the cause, and look at challenger B</div>
+      <div class="opt" data-why="Splits the service without evidence that a second model is needed">Use A everywhere except Al-Jabal</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The gate exists for exactly this case. The rule was set before the release and the regional loss is far outside the noise.</div>
+  </div>
+  <aside class="notes"><p>Answer: C. Then ask what A's failure says about its training data: the delayed labels.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-1-4" data-auto="lab" data-lab="1.4">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>The setup cell builds the October registry with two challengers: about a minute and a half. Usual problems: computing AUC on all rows instead of the holdout feeders; comparing a challenger's region with its own overall score; moving the alias before recording the previous champion.</p></aside>
 </section>
 
-<section class="slide" id="wrap-up">
-  <div class="kicker">Day 1 · wrap-up</div>
-  <h2>Three things to keep</h2>
-  <div class="cols cols-3">
-    <div class="card c-teal"><h4>Remember</h4><p class="small mb0">REPLACE: one idea participants keep</p></div>
-    <div class="card c-coral"><h4>Remember</h4><p class="small mb0">REPLACE: one idea participants keep</p></div>
-    <div class="card c-purple"><h4>Remember</h4><p class="small mb0">REPLACE: one idea participants keep</p></div>
+<!-- ======================= CLOSING ======================= -->
+<section class="slide" data-label="Recap" id="day-1-recap">
+  <div class="kicker">Day 1 recap</div>
+  <h2>Know what ran, rebuild it, stop bad data, and gate by region</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>One release unit</h4><p class="small mb0">Seven parts, hashed together; the served model recorded.</p></div>
+    <div class="card c-cyan"><h4>Lineage you can rebuild</h4><p class="small mb0">Alias, version, run, snapshot hash, code hash.</p></div>
+    <div class="card c-coral"><h4>Two gates</h4><p class="small mb0">A contract before training; a regional comparison before promotion.</p></div>
   </div>
+  <aside class="notes"><p>Ask each table for the one artefact of today they would put first in the capstone repository. Pipelines and gates are 25 of the rubric's 100.</p></aside>
 </section>
 
-<section class="slide dark" id="next" data-label="Next">
-  <div class="kicker">Next</div>
-  <h2>Day 2: Deliver</h2>
-  <p class="lead">REPLACE: what participants prepare before then; unfinished labs can be finished at home</p>
-  <aside class="notes">REPLACE: accounts, installs or reading participants need before the next unit</aside>
+<section class="slide dark" data-label="Tomorrow" id="tomorrow-deliver">
+  <div class="kicker">Tomorrow · Day 2</div>
+  <h2>Deliver: the same artefact to production, language model releases, a canary that rolls back, and cost</h2>
+  <p class="lead">Bring a GitHub account for the delivery workflow. Nabd's three candidate releases are waiting, and so is the model snapshot from today's unrecorded change.</p>
+  <aside class="notes"><p>No lab tomorrow depends on today's: each starts from its own reference state.</p></aside>
 </section>

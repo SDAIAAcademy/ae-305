@@ -1,0 +1,118 @@
+[
+ {
+  "name": "find_customer",
+  "description": "Account, feeder and region of a customer.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "account": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "account"
+   ]
+  },
+  "writes": false
+ },
+ {
+  "name": "get_outage",
+  "description": "Outage status of a feeder: active, restored, pending or none, with its age in minutes.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "feeder_id": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "feeder_id"
+   ]
+  },
+  "writes": false
+ },
+ {
+  "name": "create_ticket",
+  "description": "Open an outage ticket for a customer report.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "account": {
+     "type": "string"
+    },
+    "feeder_id": {
+     "type": "string"
+    },
+    "summary": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "account",
+    "feeder_id",
+    "summary"
+   ]
+  },
+  "writes": true
+ },
+ {
+  "name": "notify_crew",
+  "description": "Send a ticket to the duty crew of its region.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "ticket_id": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "ticket_id"
+   ]
+  },
+  "writes": true
+ },
+ {
+  "name": "close_report",
+  "description": "Close a customer report because power is restored.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "account": {
+     "type": "string"
+    },
+    "feeder_id": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "account",
+    "feeder_id"
+   ]
+  },
+  "writes": true
+ },
+ {
+  "name": "update_customer_record",
+  "description": "Change a field of a customer record (needs approval).",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "account": {
+     "type": "string"
+    },
+    "field": {
+     "type": "string"
+    },
+    "value": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "account",
+    "field",
+    "value"
+   ]
+  },
+  "writes": true
+ }
+]

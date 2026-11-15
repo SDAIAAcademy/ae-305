@@ -1,45 +1,8 @@
 # %% [markdown]
-# # Lab 2.1 · Wire merge to staging to production with an approval step
+# # Lab 2.1 · Merge to staging to production
 #
-# Day 2 · Session 1 (Continuous delivery for models) · 25 min.
+# Deliver · Session 1 (Continuous delivery for models) · 25 min.
 #
-# REPLACE: what participants build in this lab, in two or three lines.
+# Turn a single-job workflow into merge, staging and production jobs that promote one digest, add the approval step, check the workflow and simulate a release.
 #
-# **Tasks**
-# - [ ] REPLACE: the tasks, each with its minutes; they add up to 25
-# - [ ] ✱ Stretch · REPLACE: an extension for those who finish early
-
-# %%
-import os, sys, subprocess
-from pathlib import Path
-
-IN_COLAB = "google.colab" in sys.modules
-if IN_COLAB:
-    REPO_URL = "https://github.com/SDAIAAcademy/ae-305.git"
-    if not Path("/content/ae-305").exists():
-        subprocess.run(["git", "clone", "-q", REPO_URL, "/content/ae-305"], check=True)
-    os.chdir("/content/ae-305/labs")
-else:
-    while not Path("_tools").exists() and Path.cwd() != Path.cwd().parent:
-        os.chdir("..")  # solutions/ notebooks run from labs/
-sys.path.insert(0, os.getcwd())
-
-# %% [markdown]
-# ## 1 · REPLACE: the first task
-#
-# REPLACE: what to do and why, in two sentences.
-
-# %%
-# ✏️ Exercise
-def first_task():
-    # BEGIN SOLUTION
-    return "the reference result"
-    # END SOLUTION
-
-# %%
-# Check, with a safety net: the cells below still run when the exercise is not done yet
-try:
-    result = first_task()
-except NotImplementedError:
-    result = "the reference result"
-print(result)
+# This notebook is completed when its unit is built.

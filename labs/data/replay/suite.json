@@ -1,0 +1,40 @@
+{
+ "note": "Regression cases replayed on every harness change (Lab 4.3).",
+ "cases": [
+  {
+   "name": "case_new_outage",
+   "recording": "case_new_outage.json",
+   "expect": {
+    "final_contains": "I opened ticket"
+   }
+  },
+  {
+   "name": "case_known_outage",
+   "recording": "case_known_outage.json",
+   "expect": {
+    "final_contains": "known outage"
+   }
+  },
+  {
+   "name": "case_restored_fresh",
+   "recording": "case_restored_fresh.json",
+   "expect": {
+    "final_contains": "restored"
+   }
+  },
+  {
+   "name": "case_record_change",
+   "recording": "case_record_change.json",
+   "expect": {
+    "final_contains": "approval"
+   }
+  },
+  {
+   "name": "case_unknown_account",
+   "recording": "case_unknown_account.json",
+   "expect": {
+    "final_contains": "cannot find"
+   }
+  }
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "report": "Any news on my outage? Account ACC-40010686.",
+ "outages": {
+  "F-4684": {
+   "status": "pending",
+   "ticket": null,
+   "age_minutes": 1
+  }
+ }
+}

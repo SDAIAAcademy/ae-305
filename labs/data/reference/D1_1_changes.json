@@ -1,0 +1,12 @@
+[
+ [
+  "classifier.threshold",
+  0.35,
+  0.3
+ ],
+ [
+  "nabd.model_resolved",
+  "hosted/steady-2026-09-12",
+  "hosted/steady-2026-10-14"
+ ]
+]

@@ -1,0 +1,94 @@
+{
+ "synthetic": true,
+ "case": "case_restored_fresh",
+ "session_id": "S-903",
+ "status": "done",
+ "final": "Power is restored on your feeder F-1822. If you are still without power, reply to this message.",
+ "events": [
+  {
+   "type": "report",
+   "text": "Is the power back? Account ACC-40001233."
+  },
+  {
+   "type": "model",
+   "step": 1,
+   "content": "{\"tool\": \"find_customer\", \"args\": {\"account\": \"ACC-40001233\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 126,
+    "output_tokens": 15
+   }
+  },
+  {
+   "type": "tool",
+   "step": 1,
+   "tool": "find_customer",
+   "args": {
+    "account": "ACC-40001233"
+   },
+   "result": {
+    "account": "ACC-40001233",
+    "feeder_id": "F-1822",
+    "region": "SAH",
+    "life_support": false
+   }
+  },
+  {
+   "type": "model",
+   "step": 2,
+   "content": "{\"tool\": \"get_outage\", \"args\": {\"feeder_id\": \"F-1822\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 176,
+    "output_tokens": 13
+   }
+  },
+  {
+   "type": "tool",
+   "step": 2,
+   "tool": "get_outage",
+   "args": {
+    "feeder_id": "F-1822"
+   },
+   "result": {
+    "feeder_id": "F-1822",
+    "status": "restored",
+    "ticket": "OT-30390",
+    "age_minutes": 6
+   }
+  },
+  {
+   "type": "model",
+   "step": 3,
+   "content": "{\"tool\": \"close_report\", \"args\": {\"account\": \"ACC-40001233\", \"feeder_id\": \"F-1822\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 222,
+    "output_tokens": 21
+   }
+  },
+  {
+   "type": "tool",
+   "step": 3,
+   "tool": "close_report",
+   "args": {
+    "account": "ACC-40001233",
+    "feeder_id": "F-1822"
+   },
+   "result": {
+    "account": "ACC-40001233",
+    "closed": true
+   }
+  },
+  {
+   "type": "model",
+   "step": 4,
+   "content": "{\"final\": \"Power is restored on your feeder F-1822. If you are still without power, reply to this message.\"}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 266,
+    "output_tokens": 27
+   }
+  }
+ ]
+}

@@ -1,0 +1,71 @@
+{
+ "synthetic": true,
+ "case": "case_record_change",
+ "session_id": "S-904",
+ "status": "done",
+ "final": "Your change is waiting for approval by our duty engineer; we will confirm it.",
+ "events": [
+  {
+   "type": "report",
+   "text": "Please change my phone number. Account ACC-40001781."
+  },
+  {
+   "type": "model",
+   "step": 1,
+   "content": "{\"tool\": \"find_customer\", \"args\": {\"account\": \"ACC-40001781\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 129,
+    "output_tokens": 15
+   }
+  },
+  {
+   "type": "tool",
+   "step": 1,
+   "tool": "find_customer",
+   "args": {
+    "account": "ACC-40001781"
+   },
+   "result": {
+    "account": "ACC-40001781",
+    "feeder_id": "F-1167",
+    "region": "HAD",
+    "life_support": false
+   }
+  },
+  {
+   "type": "model",
+   "step": 2,
+   "content": "{\"tool\": \"update_customer_record\", \"args\": {\"account\": \"ACC-40001781\", \"field\": \"phone\", \"value\": \"as given by the customer\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 179,
+    "output_tokens": 31
+   }
+  },
+  {
+   "type": "tool",
+   "step": 2,
+   "tool": "update_customer_record",
+   "args": {
+    "account": "ACC-40001781",
+    "field": "phone",
+    "value": "as given by the customer"
+   },
+   "result": {
+    "status": "pending_approval",
+    "approver": "control-room duty engineer"
+   }
+  },
+  {
+   "type": "model",
+   "step": 3,
+   "content": "{\"final\": \"Your change is waiting for approval by our duty engineer; we will confirm it.\"}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 242,
+    "output_tokens": 22
+   }
+  }
+ ]
+}

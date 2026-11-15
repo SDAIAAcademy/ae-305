@@ -3,24 +3,53 @@
   "version": 1,
   "questions": [
     {
-      "id": "q-example-1",
+      "id": "q-d1-manifest-hash",
       "type": "single",
-      "prompt": "REPLACE: a practice question on LO1, as a short scenario",
+      "prompt": "Wahaj keeps a release number that people increase by hand. A teammate edits Nabd's tool schema and forgets to increase it. Which practice would have shown the change?",
       "options": [
-        "REPLACE: a wrong option that a common misconception makes tempting",
-        "REPLACE: the right answer",
-        "REPLACE: a wrong option that a common misconception makes tempting",
-        "REPLACE: a wrong option that a common misconception makes tempting"
+        "A manifest whose release id is a hash of every part",
+        "A stricter reminder in the team's release checklist",
+        "Running the evaluation set once a month",
+        "Keeping the release number in the prompt file"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "A content hash changes whenever any part changes, whether or not anyone remembered to bump a number.",
+      "misconceptions": [
+        "",
+        "Relies on memory, the thing that failed",
+        "Detects a behaviour change late and does not say which part changed",
+        "Moves the number without making it follow the content"
+      ],
+      "lo": [
+        "LO1"
+      ],
+      "day": "day1",
+      "session": 1,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d1-served-model",
+      "type": "single",
+      "prompt": "Nabd's release names a provider alias that ends in \"latest\". What should each call's log record so that a silent model change shows up in a diff?",
+      "options": [
+        "The prompt text only",
+        "The model identifier returned in the response",
+        "The alias the release asked for",
+        "The number of tokens of the answer"
       ],
       "correct": [
         1
       ],
-      "explanation": "REPLACE: why the right answer is right, in one sentence",
+      "explanation": "The response names the model that actually served the call; the alias can point at a different snapshot tomorrow.",
       "misconceptions": [
-        "REPLACE: the misconception behind this option",
+        "Assumes the prompt is the only part that can change behaviour",
         "",
-        "REPLACE: the misconception behind this option",
-        "REPLACE: the misconception behind this option"
+        "Records the pointer, which looks the same before and after it moves",
+        "Records a symptom that varies for many reasons"
       ],
       "lo": [
         "LO1"
@@ -32,135 +61,234 @@
       "weight": 1
     },
     {
-      "id": "q-example-2",
-      "type": "tf",
-      "prompt": "REPLACE: a statement on LO2 that is true",
+      "id": "q-d1-index-part",
+      "type": "single",
+      "prompt": "Nabd's prompt, model and tools are unchanged, but the manuals index was rebuilt with a revised manual. Is this a new release?",
       "options": [
-        "True",
-        "False"
+        "No: only the data changed, not the system",
+        "No, unless the answers get worse",
+        "Yes: the index is part of what changes behaviour",
+        "Only if the index is larger than before"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "The retrieval index decides which text the model sees, so a rebuilt index is a change to the release unit.",
+      "misconceptions": [
+        "Treats the retrieval index as data outside the release",
+        "Decides by outcome after the fact instead of by what changed",
+        "",
+        "Ties the release to size instead of content"
+      ],
+      "lo": [
+        "LO1"
+      ],
+      "day": "day1",
+      "session": 1,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d1-reproduce-proof",
+      "type": "single",
+      "prompt": "You retrain the champion from its registry lineage. Which evidence proves you reproduced it?",
+      "options": [
+        "The same AUC on the holdout to three decimals",
+        "The same number of trees in both models",
+        "The same file name for the training data",
+        "The same data hash, the same code hash and identical predictions row by row"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "Equal inputs (data and code hashes) and equal outputs (every prediction) are the proof; a metric alone is not.",
+      "misconceptions": [
+        "Two different models can share a metric",
+        "Shape is not behaviour",
+        "A file name says nothing about its rows",
+        ""
+      ],
+      "lo": [
+        "LO1"
+      ],
+      "day": "day1",
+      "session": 2,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d1-param-strings",
+      "type": "single",
+      "prompt": "A retraining script reads the champion's parameters back from the tracking store and passes them straight to the trainer. It fails on the sample weight. Why?",
+      "options": [
+        "The tracking store returns parameters as strings",
+        "The champion was trained with a different library",
+        "The registry deleted the parameter after promotion",
+        "Sample weights cannot be logged"
       ],
       "correct": [
         0
       ],
-      "explanation": "REPLACE: why the right answer is right, in one sentence",
+      "explanation": "Parameters are stored as text, so code that retrains from the registry converts each one back to its type.",
       "misconceptions": [
         "",
-        "REPLACE: the misconception behind this option"
+        "Guesses at the environment before reading the error",
+        "Parameters stay with the run",
+        "Confuses logging with typing"
       ],
       "lo": [
         "LO2"
       ],
       "day": "day1",
-      "session": 1,
-      "level": "understand",
-      "pool": "practice",
-      "weight": 1
-    },
-    {
-      "id": "q-example-3",
-      "type": "single",
-      "prompt": "REPLACE: a practice question on LO3, as a short scenario",
-      "options": [
-        "REPLACE: a wrong option that a common misconception makes tempting",
-        "REPLACE: the right answer",
-        "REPLACE: a wrong option that a common misconception makes tempting",
-        "REPLACE: a wrong option that a common misconception makes tempting"
-      ],
-      "correct": [
-        1
-      ],
-      "explanation": "REPLACE: why the right answer is right, in one sentence",
-      "misconceptions": [
-        "REPLACE: the misconception behind this option",
-        "",
-        "REPLACE: the misconception behind this option",
-        "REPLACE: the misconception behind this option"
-      ],
-      "lo": [
-        "LO3"
-      ],
-      "day": "day1",
-      "session": 1,
+      "session": 2,
       "level": "apply",
       "pool": "practice",
       "weight": 1
     },
     {
-      "id": "q-example-4",
-      "type": "tf",
-      "prompt": "REPLACE: a statement on LO4 that is true",
-      "options": [
-        "True",
-        "False"
-      ],
-      "correct": [
-        0
-      ],
-      "explanation": "REPLACE: why the right answer is right, in one sentence",
-      "misconceptions": [
-        "",
-        "REPLACE: the misconception behind this option"
-      ],
-      "lo": [
-        "LO4"
-      ],
-      "day": "day1",
-      "session": 1,
-      "level": "understand",
-      "pool": "practice",
-      "weight": 1
-    },
-    {
-      "id": "q-example-5",
+      "id": "q-d1-contract-before-train",
       "type": "single",
-      "prompt": "REPLACE: a practice question on LO5, as a short scenario",
+      "prompt": "A monthly batch arrives with one region's load written as a fraction. Which design stops it doing harm?",
       "options": [
-        "REPLACE: a wrong option that a common misconception makes tempting",
-        "REPLACE: the right answer",
-        "REPLACE: a wrong option that a common misconception makes tempting",
-        "REPLACE: a wrong option that a common misconception makes tempting"
+        "Train, then reject the model if its AUC falls",
+        "A contract step before training that stops the run and reports the column",
+        "A cleaning step that rescales small loads",
+        "Let the crews report odd inspection lists"
       ],
       "correct": [
         1
       ],
-      "explanation": "REPLACE: why the right answer is right, in one sentence",
+      "explanation": "The contract names the broken column before any model learns from it and sends the report to the owner of the source.",
       "misconceptions": [
-        "REPLACE: the misconception behind this option",
+        "A model trained and scored on broken data can still score well",
         "",
-        "REPLACE: the misconception behind this option",
-        "REPLACE: the misconception behind this option"
+        "Repairs a fault the data owner has not confirmed",
+        "Detection after the damage, by the people it hurts"
       ],
       "lo": [
-        "LO5"
+        "LO2"
       ],
       "day": "day1",
-      "session": 1,
+      "session": 3,
       "level": "apply",
       "pool": "practice",
       "weight": 1
     },
     {
-      "id": "q-example-6",
-      "type": "tf",
-      "prompt": "REPLACE: a statement on LO6 that is true",
+      "id": "q-d1-lazy-validation",
+      "type": "single",
+      "prompt": "Why does Lab 1.3 validate the batch lazily, collecting every failure?",
       "options": [
-        "True",
-        "False"
+        "It is faster than stopping at the first failure",
+        "Because pandera cannot stop at the first failure",
+        "So the data owner can fix every problem in one delivery",
+        "So the pipeline can repair the failing rows"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "One report with every failure saves a round trip per problem with the team that owns the export.",
+      "misconceptions": [
+        "Speed is not the reason",
+        "It can; lazy is a choice",
+        "",
+        "Validation reports; it does not repair"
+      ],
+      "lo": [
+        "LO2"
+      ],
+      "day": "day1",
+      "session": 3,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d1-region-gate",
+      "type": "single",
+      "prompt": "A challenger beats the champion overall and is 0.07 AUC worse in one region; the gate's tolerance is 0.03. What should the gate do?",
+      "options": [
+        "Promote: the overall gain outweighs one region",
+        "Raise the tolerance for this release",
+        "Promote and watch that region closely",
+        "Reject it, and record the region and the reason"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "The regional rule is set before the release; a loss far beyond the noise in one region blocks promotion.",
+      "misconceptions": [
+        "Lets an average hide the people who pay for it",
+        "Changes the rule to pass a candidate",
+        "Ships a known regression and hopes a monitor catches it",
+        ""
+      ],
+      "lo": [
+        "LO2"
+      ],
+      "day": "day1",
+      "session": 4,
+      "level": "evaluate",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d1-tolerance",
+      "type": "single",
+      "prompt": "Why does the promotion gate allow a small drop in a region instead of none at all?",
+      "options": [
+        "A region's AUC on a few hundred feeders varies by a few hundredths between samples",
+        "Small regions matter less to the company",
+        "Challengers are always slightly worse in some region",
+        "The champion's scores are rounded"
       ],
       "correct": [
         0
       ],
-      "explanation": "REPLACE: why the right answer is right, in one sentence",
+      "explanation": "Without a tolerance the gate would reject almost every challenger on sampling noise; the bootstrap measures its size.",
       "misconceptions": [
         "",
-        "REPLACE: the misconception behind this option"
+        "Treats a fairness rule as a business weight",
+        "Not a law; it is noise",
+        "Rounding is far smaller than the tolerance"
       ],
       "lo": [
-        "LO6"
+        "LO2"
       ],
       "day": "day1",
-      "session": 1,
+      "session": 4,
       "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d1-promote-alias",
+      "type": "single",
+      "prompt": "Serving loads models:/fault-risk@champion. What is the release when challenger B passes the gate?",
+      "options": [
+        "Copy B's model file into the service image",
+        "Move the champion alias to B, keep previous-champion on the old version, tag the reason",
+        "Delete the old champion version",
+        "Retrain B on all data and register it"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "Moving an alias is one recorded, reversible change; the previous version stays one move away.",
+      "misconceptions": [
+        "Bypasses the registry and loses the audit record",
+        "",
+        "Removes the rollback",
+        "Ships a model the gate never saw"
+      ],
+      "lo": [
+        "LO2"
+      ],
+      "day": "day1",
+      "session": 4,
+      "level": "apply",
       "pool": "practice",
       "weight": 1
     }

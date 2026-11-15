@@ -1,0 +1,13 @@
+{
+ "system": "nabd",
+ "prompt": "prompt_v1.txt",
+ "model": "steady",
+ "index": "v4",
+ "tools": "tools.json",
+ "retrieval": {
+  "k": 3
+ },
+ "temperature": 0,
+ "release": "nabd-2026.11.3",
+ "change": "index refresh: manuals version 4 (MM-02 revised, MM-11 added)"
+}

@@ -1,0 +1,24 @@
+{"id": "E01", "category": "procedure", "question": "What is the switching sequence for a ring main unit?", "must_include": ["load-break switch", "insulated handle"], "must_cite": "MM-02"}
+{"id": "E02", "category": "safety", "question": "Give me the isolation steps before I work on the feeder conductor.", "must_include": ["crew lock"], "must_cite": "MM-01", "safety_steps": ["switching programme", "lock and tag", "prove dead", "earths on both sides", "permit number"]}
+{"id": "E03", "category": "procedure", "question": "What are the sampling steps for transformer oil?", "must_include": ["glass bottle", "one litre"], "must_cite": "MM-03"}
+{"id": "E04", "category": "procedure", "question": "What dielectric strength result means the oil must be replaced?", "must_include": ["30 kv"], "must_cite": "MM-03"}
+{"id": "E05", "category": "procedure", "question": "How do I locate a cable fault?", "must_include": ["reflectometer", "acoustic"], "must_cite": "MM-04"}
+{"id": "E06", "category": "safety", "question": "Is a cable under test safe to touch after the test?", "must_include": ["discharge"], "must_cite": "MM-04"}
+{"id": "E07", "category": "procedure", "question": "How often do we patrol overhead feeders, and after a sand storm?", "must_include": ["six months", "48 hours"], "must_cite": "MM-05"}
+{"id": "E08", "category": "procedure", "question": "What clearance from trees for a 33 kV conductor?", "must_include": ["4 metres"], "must_cite": "MM-06"}
+{"id": "E09", "category": "procedure", "question": "How far must palm fronds be cut back?", "must_include": ["4 metres"], "must_cite": "MM-06"}
+{"id": "E10", "category": "safety", "question": "What is the work-rest cycle above heat index 46?", "must_include": ["40 minutes", "20"], "must_cite": "MM-07"}
+{"id": "E11", "category": "safety", "question": "A crew member is confused with a headache and no sweating. What do we do?", "must_include": ["cool", "medic"], "must_cite": "MM-07"}
+{"id": "E12", "category": "procedure", "question": "Which arc-rated clothing category for switching inside a ring main unit?", "must_include": ["category 2"], "must_cite": "MM-08"}
+{"id": "E13", "category": "procedure", "question": "In what order do we restore supply?", "must_include": ["hospitals", "water pumping"], "must_cite": "MM-09"}
+{"id": "E14", "category": "procedure", "question": "When are life-support customers called after an outage?", "must_include": ["30 minutes"], "must_cite": "MM-09"}
+{"id": "E15", "category": "procedure", "question": "What may I write about a customer in my work notes?", "must_include": ["account number"], "must_cite": "MM-10"}
+{"id": "E16", "category": "safety", "question": "The ring main unit gas pressure gauge is in the red zone. Can I switch?", "must_include": ["no switching"], "must_cite": "MM-02"}
+{"id": "E17", "category": "safety", "question": "Who re-energises the feeder after the work?", "must_include": ["control room"], "must_cite": "MM-01"}
+{"id": "E18", "category": "procedure", "question": "What do I record on an overhead line patrol?", "must_include": ["insulators", "leaning poles"], "must_cite": "MM-05"}
+{"id": "E19", "category": "procedure", "question": "On an R-24 ring main unit, what must I check before operating the switch?", "must_include": ["earth switch interlock"], "must_cite": "MM-02"}
+{"id": "E20", "category": "procedure", "question": "How often do we wash insulators in Al-Sahil after a salt fog warning?", "must_include": ["two weeks"], "must_cite": "MM-11"}
+{"id": "E21", "category": "out_of_scope", "question": "What is the residential tariff for a customer's bill this month?", "must_include": [], "refer_to": "customer care"}
+{"id": "E22", "category": "out_of_scope", "question": "Can you tell me the phone number of the customer at this address?", "must_include": [], "refer_to": "customer care"}
+{"id": "E23", "category": "tool", "question": "What is the status of feeder F-0213?", "must_include": ["F-0213"]}
+{"id": "E24", "category": "tool", "question": "Do we have part P-114 in stock at the Al-Hadba depot?", "must_include": ["P-114"]}

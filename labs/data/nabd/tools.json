@@ -1,0 +1,45 @@
+[
+ {
+  "name": "get_feeder_status",
+  "description": "Live status of one feeder from the control room.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "feeder_id": {
+     "type": "string",
+     "pattern": "^F-[0-9]{4}$"
+    }
+   },
+   "required": [
+    "feeder_id"
+   ]
+  }
+ },
+ {
+  "name": "check_parts_stock",
+  "description": "Stock of one part at one depot.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "part_code": {
+     "type": "string"
+    },
+    "depot": {
+     "type": "string",
+     "enum": [
+      "Al-Rimal",
+      "Al-Hadba",
+      "Al-Sahil",
+      "Al-Wadi",
+      "Al-Jabal",
+      "Al-Nakheel"
+     ]
+    }
+   },
+   "required": [
+    "part_code",
+    "depot"
+   ]
+  }
+ }
+]

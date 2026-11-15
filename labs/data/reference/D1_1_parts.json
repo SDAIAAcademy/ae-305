@@ -1,0 +1,27 @@
+{
+ "run_A": {
+  "classifier": {
+   "registry": "fault-risk@champion v3",
+   "threshold": 0.35,
+   "features": "dbe2ced7584a"
+  },
+  "nabd": {
+   "prompt": "6443c51a3f24",
+   "tools": "826242675709",
+   "index": "v3",
+   "index_fingerprint": "758411e42da6",
+   "retrieval": {
+    "k": 3
+   },
+   "temperature": 0,
+   "model_requested": "hosted/steady-latest",
+   "model_resolved": "hosted/steady-2026-09-12"
+  },
+  "mubadir": {
+   "prompt.md": "21280ad45df9",
+   "tools.json": "ad9380b78084",
+   "harness.yaml": "58774e13a374",
+   "sandbox.yaml": "30f31ccf99c6"
+  }
+ }
+}

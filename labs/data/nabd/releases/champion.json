@@ -1,0 +1,12 @@
+{
+ "system": "nabd",
+ "prompt": "prompt_v1.txt",
+ "model": "steady",
+ "index": "v3",
+ "tools": "tools.json",
+ "retrieval": {
+  "k": 3
+ },
+ "temperature": 0,
+ "release": "nabd-2026.10.1"
+}

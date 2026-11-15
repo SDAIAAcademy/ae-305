@@ -1,0 +1,116 @@
+{
+ "synthetic": true,
+ "case": "case_new_outage",
+ "session_id": "S-901",
+ "status": "done",
+ "final": "I opened ticket OT-31001 for your feeder F-2074 and sent it to the duty crew.",
+ "events": [
+  {
+   "type": "report",
+   "text": "No power in my street. Account ACC-40000548."
+  },
+  {
+   "type": "model",
+   "step": 1,
+   "content": "{\"tool\": \"find_customer\", \"args\": {\"account\": \"ACC-40000548\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 127,
+    "output_tokens": 15
+   }
+  },
+  {
+   "type": "tool",
+   "step": 1,
+   "tool": "find_customer",
+   "args": {
+    "account": "ACC-40000548"
+   },
+   "result": {
+    "account": "ACC-40000548",
+    "feeder_id": "F-2074",
+    "region": "SAH",
+    "life_support": false
+   }
+  },
+  {
+   "type": "model",
+   "step": 2,
+   "content": "{\"tool\": \"get_outage\", \"args\": {\"feeder_id\": \"F-2074\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 177,
+    "output_tokens": 13
+   }
+  },
+  {
+   "type": "tool",
+   "step": 2,
+   "tool": "get_outage",
+   "args": {
+    "feeder_id": "F-2074"
+   },
+   "result": {
+    "feeder_id": "F-2074",
+    "status": "none",
+    "ticket": null,
+    "age_minutes": 0
+   }
+  },
+  {
+   "type": "model",
+   "step": 3,
+   "content": "{\"tool\": \"create_ticket\", \"args\": {\"account\": \"ACC-40000548\", \"feeder_id\": \"F-2074\", \"summary\": \"customer reports no power\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 220,
+    "output_tokens": 31
+   }
+  },
+  {
+   "type": "tool",
+   "step": 3,
+   "tool": "create_ticket",
+   "args": {
+    "account": "ACC-40000548",
+    "feeder_id": "F-2074",
+    "summary": "customer reports no power"
+   },
+   "result": {
+    "ticket_id": "OT-31001"
+   }
+  },
+  {
+   "type": "model",
+   "step": 4,
+   "content": "{\"tool\": \"notify_crew\", \"args\": {\"ticket_id\": \"OT-31001\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 269,
+    "output_tokens": 14
+   }
+  },
+  {
+   "type": "tool",
+   "step": 4,
+   "tool": "notify_crew",
+   "args": {
+    "ticket_id": "OT-31001"
+   },
+   "result": {
+    "ticket_id": "OT-31001",
+    "notified": true
+   }
+  },
+  {
+   "type": "model",
+   "step": 5,
+   "content": "{\"final\": \"I opened ticket OT-31001 for your feeder F-2074 and sent it to the duty crew.\"}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 305,
+    "output_tokens": 22
+   }
+  }
+ ]
+}

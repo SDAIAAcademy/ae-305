@@ -1,0 +1,96 @@
+{
+ "synthetic": true,
+ "incident": "INC-0412",
+ "summary": "Mubadir told a customer that power was restored while the outage on the feeder was live. The customer called back after 40 minutes; the control room confirmed the outage had never ended.",
+ "service_note": "The outage service's read replica was lagging during a database failover.",
+ "session_id": "S-0412",
+ "status": "done",
+ "final": "Power is restored on your feeder F-3350. If you are still without power, reply to this message.",
+ "events": [
+  {
+   "type": "report",
+   "text": "Salam, my house has had no power for two hours. Account ACC-40005754."
+  },
+  {
+   "type": "model",
+   "step": 1,
+   "content": "{\"tool\": \"find_customer\", \"args\": {\"account\": \"ACC-40005754\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 133,
+    "output_tokens": 15
+   }
+  },
+  {
+   "type": "tool",
+   "step": 1,
+   "tool": "find_customer",
+   "args": {
+    "account": "ACC-40005754"
+   },
+   "result": {
+    "account": "ACC-40005754",
+    "feeder_id": "F-3350",
+    "region": "JAB",
+    "life_support": false
+   }
+  },
+  {
+   "type": "model",
+   "step": 2,
+   "content": "{\"tool\": \"get_outage\", \"args\": {\"feeder_id\": \"F-3350\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 183,
+    "output_tokens": 13
+   }
+  },
+  {
+   "type": "tool",
+   "step": 2,
+   "tool": "get_outage",
+   "args": {
+    "feeder_id": "F-3350"
+   },
+   "result": {
+    "feeder_id": "F-3350",
+    "status": "restored",
+    "ticket": "OT-30412",
+    "age_minutes": 140
+   }
+  },
+  {
+   "type": "model",
+   "step": 3,
+   "content": "{\"tool\": \"close_report\", \"args\": {\"account\": \"ACC-40005754\", \"feeder_id\": \"F-3350\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 229,
+    "output_tokens": 21
+   }
+  },
+  {
+   "type": "tool",
+   "step": 3,
+   "tool": "close_report",
+   "args": {
+    "account": "ACC-40005754",
+    "feeder_id": "F-3350"
+   },
+   "result": {
+    "account": "ACC-40005754",
+    "closed": true
+   }
+  },
+  {
+   "type": "model",
+   "step": 4,
+   "content": "{\"final\": \"Power is restored on your feeder F-3350. If you are still without power, reply to this message.\"}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 273,
+    "output_tokens": 27
+   }
+  }
+ ]
+}
