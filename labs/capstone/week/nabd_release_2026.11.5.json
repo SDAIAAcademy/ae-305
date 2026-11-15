@@ -1,0 +1,14 @@
+{
+ "system": "nabd",
+ "prompt": "prompt_v2.txt",
+ "model": "steady",
+ "index": "v4",
+ "tools": "tools.json",
+ "retrieval": {
+  "k": 3
+ },
+ "temperature": 0,
+ "release": "nabd-2026.11.5",
+ "change": "the provider's alias steady moves to snapshot steady-2026-11-03",
+ "snapshot": "steady-2026-11-03"
+}

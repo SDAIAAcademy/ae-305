@@ -1,0 +1,34 @@
+{
+ "synthetic": true,
+ "week": "2026-11-02 to 2026-11-05",
+ "events": [
+  {
+   "day": "Monday 2026-11-02",
+   "system": "fault-risk classifier",
+   "event": "scheduled retrain",
+   "input": "data/batches/feeders_2026-09.csv",
+   "note": "September's labels are complete since 1 November"
+  },
+  {
+   "day": "Tuesday 2026-11-03",
+   "system": "fault-risk classifier",
+   "event": "re-delivered batch",
+   "input": "capstone/week/feeders_2026-09_redelivered.csv",
+   "note": "the SCADA team's corrected export"
+  },
+  {
+   "day": "Wednesday 2026-11-04",
+   "system": "Nabd",
+   "event": "provider model update",
+   "input": "capstone/week/nabd_release_2026.11.5.json and capstone/week/canary_week.jsonl",
+   "note": "the alias steady now serves steady-2026-11-03"
+  },
+  {
+   "day": "Thursday 2026-11-05",
+   "system": "Mubadir",
+   "event": "incident INC-0419",
+   "input": "capstone/week/INC-0419.json",
+   "note": "two tickets for one report"
+  }
+ ]
+}

@@ -28,13 +28,27 @@
 
 <section class="slide" id="format" data-label="Format">
   <div class="kicker">Format</div>
-  <h2>8 minutes for each presentation</h2>
+  <h2>8 minutes for each defence, questions included</h2>
   <div class="cols cols-3">
-    <div class="card c-teal"><h4>1 · The problem</h4><p class="small mb0">Who, what, why now. One slide.</p></div>
-    <div class="card c-cyan"><h4>2 · What you built</h4><p class="small mb0">Design, decisions, trade-offs. Then the live demo.</p></div>
-    <div class="card c-coral"><h4>3 · What you measured</h4><p class="small mb0">Baseline, improvement, failures found, what comes next.</p></div>
+    <div class="card c-teal"><h4>1 · The release log · 2 min</h4><p class="small mb0">Each decision of the week, the metric it was taken on, the evidence file.</p></div>
+    <div class="card c-cyan"><h4>2 · The injected fault · 5 min</h4><p class="small mb0">Find it from traces and logs, say what you would do and who decides, do the first step.</p></div>
+    <div class="card c-coral"><h4>3 · The runbook · 1 min</h4><p class="small mb0">What this week would change in it.</p></div>
   </div>
-  <div class="callout note mt"><b>Peer feedback.</b> After each talk, everyone writes one strength, one question and one suggestion.</div>
+  <div class="callout note mt"><b>Peer feedback.</b> After each defence, everyone writes one strength, one question and one suggestion.</div>
+  <aside class="notes"><p>Inject the fault into a copy of the participant's setup, never into their repository. Pick from the assessor's list, and vary it across participants who present one after another. The participant diagnoses without an assistant during the defence.</p></aside>
+</section>
+
+<section class="slide" id="release-week" data-label="The week">
+  <div class="kicker">What every repository shows</div>
+  <h2>Four events, four decisions, each on a stated metric</h2>
+  <table class="t small">
+    <tr><th>Day</th><th>Event</th><th>The reference run decided</th></tr>
+    <tr><td>Monday</td><td>scheduled retrain on the corrupt September batch</td><td>stopped at validation: duplicates, Al-Hadba load as fractions, bad region codes</td></tr>
+    <tr><td>Tuesday</td><td>the corrected re-delivery</td><td>gate rejects: Al-Hadba 0.037 below the champion, tolerance 0.03</td></tr>
+    <tr><td>Wednesday</td><td>the provider's new snapshot for Nabd</td><td>shipped: offline gate, then 5%, 25% and 50% passed</td></tr>
+    <tr><td>Thursday</td><td>INC-0419, two tickets for one report</td><td>open until the participant's fix gives one ticket</td></tr>
+  </table>
+  <aside class="notes"><p>Tuesday is the judgement call: a regional drop just past the tolerance while Al-Sahil improves sharply. Look for a noise test (bootstrap) and a decision that does not change the rule mid-release. Widening the tolerance to make it pass is the answer that loses marks.</p></aside>
 </section>
 
 <section class="slide order" id="running-order" data-label="Running order">
@@ -87,8 +101,10 @@
   <h2>Keep going</h2>
   <ul class="bullets">
     <li><b>Your project stays yours:</b> keep it reproducible and add the next improvement you named today</li>
-    <li><b>Next Academy course:</b> REPLACE: the course that follows this one</li>
+    <li><b>The follow-up task, within 30 days:</b> write a release manifest and one gate for a system you run, and send the evidence</li>
+    <li><b>Next Academy course:</b> AE-404 Harness Engineering for Long-Running and Multi-Agent Systems</li>
   </ul>
+  <aside class="notes"><p>The follow-up task is tracked: collect the links at 30 days. Synthetic or anonymised evidence only; nothing internal leaves the participant's entity.</p></aside>
 </section>
 
 <section class="slide dark" id="thanks" data-label="Thank you">

@@ -39,9 +39,28 @@ Participants run three systems of a fictional electricity distribution company i
 
 ## Case study
 
-**Wahaj Electricity Distribution Company.** Wahaj is a fictional electricity distributor with six regions and 2,400 feeders that runs three systems: a feeder fault-risk classifier retrained on monthly batches, Nabd, a field-crew assistant over the maintenance manuals with two tools, and Mubadir, an outage-ticket agent. Participants version, gate, release, observe and repair all three on synthetic data generated with a fixed seed: twelve monthly batches with one corrupt and one drifted, two versions of the manuals, a replayed month of traffic with two planted shifts, recorded agent traces with one incident, and a month of cost logs.
+**Wahaj Electricity Distribution Company.** Wahaj is a fictional electricity distributor with six regions and 4,800 feeders that runs three systems: a feeder fault-risk classifier retrained on monthly batches, Nabd, a field-crew assistant over the maintenance manuals with two tools, and Mubadir, an outage-ticket agent. Participants version, gate, release, observe and repair all three on synthetic data generated with a fixed seed: twelve monthly batches with one corrupt and one drifted, two versions of the manuals, a replayed month of traffic with two planted shifts, recorded agent traces with one incident, and a month of cost logs.
 
 The people of the case: Dhafer Al-Hazzani (MLOps platform lead, owns releases), Lamya Al-Muqbil (owner of the fault-risk model), Saqer Al-Dossary (field operations supervisor), Mutab Al-Shalhoub (control-room duty engineer, approves risky agent actions) and Nouf Al-Sadhan (data protection officer). They and the company are invented.
+
+## Before the course
+
+The guided pre-work takes about two hours:
+
+1. Run `labs/00_setup_check.ipynb` in Google Colab or locally with `uv`. It checks the packages, asks Nabd one
+   question and says whether a free hosted model key works. Without a key every lab still runs, on a scripted stand-in
+   model.
+2. Refresh two things from the prerequisite courses: building a container image with a CI workflow (AE-205), and
+   reading an evaluation report with pass rates and intervals (AE-203). The checkpoints of Day 1 assume both.
+3. Read the case study above and bring one question about how your own entity releases a model or an assistant
+   today.
+
+## After the course
+
+The tracked follow-up task is due 30 days after the capstone. Pick one system you run or support. Write its release
+manifest: data, code, configuration, model, prompt, index and tools, whichever apply. Add one gate it does not have
+yet, such as a data contract, an evaluation floor, a canary trigger or a step limit. Send the trainer a link to
+synthetic or anonymised evidence that the gate ran. Nothing internal leaves your entity.
 
 <!-- academy:labs -->
 ## Labs
@@ -73,6 +92,13 @@ Every lab is a notebook in `labs/`. Open it in Google Colab from the course page
 A simulated release week in which a corrupt batch, a provider model update and an agent incident arrive; the participant gates, ships or rolls back each and submits a public repository with pipeline logs, a release log and a runbook, then defends it for eight minutes while the assessor injects one further fault
 
 **Submission:** A public GitHub repository with the pipeline logs, the release log, the runbook and timestamped trace files of the release week, built from the starter in labs/capstone/. Then an eight-minute live defence in which the assessor injects one further fault and the participant diagnoses it from traces and logs.
+
+The week runs from Monday 2 to Thursday 5 November 2026. On Monday the scheduled retrain meets the corrupt September
+batch. On Tuesday the corrected batch arrives. On Wednesday the provider moves Nabd's model alias to a new snapshot.
+On Thursday Mubadir opens two tickets for one report. `labs/capstone/README.md` gives the requirements, the rubric
+(pipelines and gates 25, delivery and rollback 20, observability 20, agent operations 20, runbook and
+reproducibility 15), the starter commands and the timeline. `labs/capstone/TEMPLATE_README.md` is the shape of the
+participant's README.
 
 ## Prerequisites
 
