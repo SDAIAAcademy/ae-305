@@ -1,0 +1,17 @@
+{
+ "model": "fault-risk",
+ "registry_alias": "champion",
+ "registry_version": 3,
+ "threshold": 0.3,
+ "features": [
+  "age_years",
+  "length_km",
+  "overhead_share",
+  "vegetation",
+  "coast_km",
+  "peak_temp_c",
+  "dust_index",
+  "load_peak_pct",
+  "faults_90d"
+ ]
+}

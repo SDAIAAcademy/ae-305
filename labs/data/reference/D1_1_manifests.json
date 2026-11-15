@@ -1,0 +1,62 @@
+{
+ "run_A": {
+  "run": "run_A",
+  "date": "2026-10-05",
+  "release": "wahaj-74ef24d1ab57",
+  "systems": {
+   "classifier": {
+    "registry": "fault-risk@champion v3",
+    "threshold": 0.35,
+    "features": "dbe2ced7584a"
+   },
+   "nabd": {
+    "prompt": "6443c51a3f24",
+    "tools": "826242675709",
+    "index": "v3",
+    "index_fingerprint": "758411e42da6",
+    "retrieval": {
+     "k": 3
+    },
+    "temperature": 0,
+    "model_requested": "hosted/steady-latest",
+    "model_resolved": "hosted/steady-2026-09-12"
+   },
+   "mubadir": {
+    "prompt.md": "21280ad45df9",
+    "tools.json": "ad9380b78084",
+    "harness.yaml": "58774e13a374",
+    "sandbox.yaml": "30f31ccf99c6"
+   }
+  }
+ },
+ "run_B": {
+  "run": "run_B",
+  "date": "2026-10-19",
+  "release": "wahaj-2e68cbff29d5",
+  "systems": {
+   "classifier": {
+    "registry": "fault-risk@champion v3",
+    "threshold": 0.3,
+    "features": "dbe2ced7584a"
+   },
+   "nabd": {
+    "prompt": "6443c51a3f24",
+    "tools": "826242675709",
+    "index": "v3",
+    "index_fingerprint": "758411e42da6",
+    "retrieval": {
+     "k": 3
+    },
+    "temperature": 0,
+    "model_requested": "hosted/steady-latest",
+    "model_resolved": "hosted/steady-2026-10-14"
+   },
+   "mubadir": {
+    "prompt.md": "21280ad45df9",
+    "tools.json": "ad9380b78084",
+    "harness.yaml": "58774e13a374",
+    "sandbox.yaml": "30f31ccf99c6"
+   }
+  }
+ }
+}

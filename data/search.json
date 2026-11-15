@@ -1,0 +1,1624 @@
+{
+  "v": 1,
+  "engine": "1.0.0",
+  "build": {
+    "at": "2026-11-15T16:00:10Z",
+    "version": "2027.1.0",
+    "commit": "42f68a3"
+  },
+  "lang": "en",
+  "dir": "ltr",
+  "slides": [
+    {
+      "deck": "day1",
+      "id": "title",
+      "n": 1,
+      "session": 0,
+      "title": "Version and build",
+      "text": "SDAIA Academy · Operating Machine Learning and Language Model Systems Version and build Day 1: One release unit, a reproducible model, a pipeline that stops on bad data, and a gate by region AI Engineering Track4 teaching days + capstone day4 sessions · 4 labsAE-305",
+      "href": "../slides/day1.html#title"
+    },
+    {
+      "deck": "day1",
+      "id": "agenda",
+      "n": 2,
+      "session": 0,
+      "title": "Version and build",
+      "text": "Today Version and build Session 1 · What changes behaviour Data, code, configuration, model, prompt, index and tool schemas move together as one release unit Session 2 · Registries and lineage A registry entry is useful only if it leads back to the exact data, code and parameters Session 3 · Pipelines with validation A data contract checked before training stops the run instead of training on a broken batch Session 4 · Promotion gates A challenger replaces the champion only when it is better overall and not worse in any region",
+      "href": "../slides/day1.html#agenda"
+    },
+    {
+      "deck": "day1",
+      "id": "four-days-three-systems",
+      "n": 3,
+      "session": 0,
+      "title": "Four days of operating three systems, then a release week as the capstone",
+      "text": "The course at a glance Four days of operating three systems, then a release week as the capstone Day 1 · Version and build The release unit, the registry, validation, promotion gates. Day 2 · Deliver Delivery with approval, language model releases, canary and rollback, cost. Day 3 · Observe Traces, drift monitors, online evaluation, retraining policies. Day 4 · Operate agents Bundles, durable execution, replay, budgets and kill switches. Day 5 · Capstone. A simulated release week: a corrupt batch, a provider model update and an agent incident arrive. You gate, ship or roll back each, then defend it with one more fault injected live.",
+      "href": "../slides/day1.html#four-days-three-systems"
+    },
+    {
+      "deck": "day1",
+      "id": "wahaj-three-systems",
+      "n": 4,
+      "session": 0,
+      "title": "Wahaj Electricity Distribution Company runs three systems in production",
+      "text": "One case study all week Wahaj Electricity Distribution Company runs three systems in production A fictional distributor: six regions, 4,800 feeders, crews in the field and a control room. You operate: Fault-risk classifier Scores every feeder monthly; the top of the list is inspected first. Retrained on monthly batches. Nabd نبض The field-crew assistant: retrieval over the maintenance manuals and two tools. Mubadir مبادر The outage-ticket agent: finds the customer, checks the outage, opens or closes tickets.",
+      "href": "../slides/day1.html#wahaj-three-systems"
+    },
+    {
+      "deck": "day1",
+      "id": "ai-policy-and-models",
+      "n": 5,
+      "session": 0,
+      "title": "Operate with evidence, on free hosted models, with AI as a tutor",
+      "text": "How this course works Operate with evidence, on free hosted models, with AI as a tutor Evidence first Every release decision in the labs is taken on a log, a metric or a trace, and written down. No model on your laptop Language model labs call a free hosted model, or a scripted stand-in when no key works. Training runs on a laptop processor or Colab. AI as a tutor An assistant may explain logs and give hints. It does not write your pipeline or alert definitions. Supervised checks. The entry and exit checks are done without AI: reading a pipeline log and a trace, and choosing a rollback trigger.",
+      "href": "../slides/day1.html#ai-policy-and-models"
+    },
+    {
+      "deck": "day1",
+      "id": "setup-check",
+      "n": 6,
+      "session": 0,
+      "title": "One notebook proves your setup: 00_setup_check",
+      "text": "Before Session 1 One notebook proves your setup: 00_setup_check git clone https://github.com/SDAIAAcademy/ae-305 cd ae-305/labs uv sync uv run jupyter lab # open 00_setup_check.ipynb It lists the packages, finds the twelve monthly batches, the manuals and the recorded agent sessions. It asks Nabd one question. \"scripted stand-in\" is a pass: every lab runs on it. In Colab, open the notebook from the course page; the first cell installs what Colab lacks.",
+      "href": "../slides/day1.html#setup-check"
+    },
+    {
+      "deck": "day1",
+      "id": "s1",
+      "n": 7,
+      "session": 1,
+      "title": "What changes behaviour",
+      "text": "Session 1 What changes behaviour Name every part that changes the behaviour of a model, an assistant and an agent Pin a provider model to an identifier that does not move Write a release manifest and diff two of them 01",
+      "href": "../slides/day1.html#s1"
+    },
+    {
+      "deck": "day1",
+      "id": "behaviour-changed-code-did-not",
+      "n": 8,
+      "session": 1,
+      "title": "Nothing was deployed, yet two systems behave differently",
+      "text": "Two runs, two weeks apart Nothing was deployed, yet two systems behave differently 212 → 268 feeders the classifier flagged for inspection 3 of Nabd's weekly probe answers changed The question of the day What exactly was running on each date? If you cannot answer from a file, you cannot explain, reproduce or roll back.",
+      "href": "../slides/day1.html#behaviour-changed-code-did-not"
+    },
+    {
+      "deck": "day1",
+      "id": "what-changes-behaviour",
+      "n": 9,
+      "session": 1,
+      "title": "Seven things change behaviour, and all seven are versioned together",
+      "text": "The release unit Seven things change behaviour, and all seven are versioned together Part Classifier Nabd Mubadir Data training snapshot the manuals customer and outage services Code trainer, features retrieval, tool code harness Configuration threshold k, temperature step limit, retries Model registry version provider model id provider model id Prompt system prompt system prompt Retrieval index index build Tool schemas two tools six tools",
+      "href": "../slides/day1.html#what-changes-behaviour"
+    },
+    {
+      "deck": "day1",
+      "id": "alias-is-a-pointer",
+      "n": 10,
+      "session": 1,
+      "title": "An alias is a pointer that the provider can move",
+      "text": "Provider model identifiers An alias is a pointer that the provider can move run A asked hosted/steady-latest answered by hosted/steady-2026-09-12 run B asked hosted/steady-latest answered by hosted/steady-2026-10-14 Release files that name the alias look identical on both dates. The response says which model answered: record that field on every call. Pin a dated identifier in the release, and change it only through a release.",
+      "href": "../slides/day1.html#alias-is-a-pointer"
+    },
+    {
+      "deck": "day1",
+      "id": "manifest-by-hash",
+      "n": 11,
+      "session": 1,
+      "title": "The manifest hashes every part; its own id is the hash of all of them",
+      "text": "Lab 1.1 · steps 2 and 3 The manifest hashes every part; its own id is the hash of all of them parts = { \"classifier\": {\"registry\": \"fault-risk@champion v3\", \"threshold\": 0.35, ...}, \"nabd\": {\"prompt\": sha(\"prompt.txt\"), \"tools\": sha(\"tools.json\"), \"index\": \"v3\", \"index_fingerprint\": Index(\"v3\").fingerprint(), \"model_requested\": rel[\"model\"], \"model_resolved\": log[\"response_model\"]}, \"mubadir\": {f: sha(f) for f in bundle_files}, } release_id = \"wahaj-\" + sha_json(parts)[:12]",
+      "href": "../slides/day1.html#manifest-by-hash"
+    },
+    {
+      "deck": "day1",
+      "id": "diff-against-change-log",
+      "n": 12,
+      "session": 1,
+      "title": "Diff the manifests, then ask the change log which changes were intended",
+      "text": "Lab 1.1 · step 4, from the course's run Diff the manifests, then ask the change log which changes were intended Difference Run A Run B In the change log? classifier.threshold 0.35 0.30 yes: approved by Lamya nabd.model_resolved steady-2026-09-12 steady-2026-10-14 no The unrecorded change. Nobody at Wahaj changed Nabd. The provider moved the alias between the runs.",
+      "href": "../slides/day1.html#diff-against-change-log"
+    },
+    {
+      "deck": "day1",
+      "id": "maturity-manual-to-automated",
+      "n": 13,
+      "session": 1,
+      "title": "Each level automates one more step and keeps the evidence of it",
+      "text": "Maturity from manual to automated Each level automates one more step and keeps the evidence of it Manual a notebook and a copied file no record Versioned manifest, registry, snapshots Day 1 Pipelined validation, gates, delivery Days 1 and 2 Closed loop monitors trigger retraining Day 3",
+      "href": "../slides/day1.html#maturity-manual-to-automated"
+    },
+    {
+      "deck": "day1",
+      "id": "checkpoint-1",
+      "n": 14,
+      "session": 1,
+      "title": "Same model name, different answers",
+      "text": "Checkpoint Same model name, different answers Nabd's release file names hosted/steady-latest on both dates, and its answers changed. What should the release record so this cannot hide again? Nothing more: the model name is already in the release The identifier the provider answered with, and a pinned dated identifier in the release The date and time of every call A message to the team whenever answers look different",
+      "href": "../slides/day1.html#checkpoint-1"
+    },
+    {
+      "deck": "day1",
+      "id": "lab-1-1",
+      "n": 15,
+      "session": 1,
+      "title": "A release manifest and the unrecorded change",
+      "text": "Lab 1.1 · 25 min A release manifest and the unrecorded change Hash every part of two recorded runs of the three Wahaj systems into release manifests, diff them and find the change that no change log recorded. D1_1_release_manifest.ipynb Read the two run folders 4 min Hash every part that changes behaviour 7 min Build the manifest for each run 6 min Diff the manifests against the change log 8 min ✱ Stretch: A check that refuses a manifest whose model is a moving alias",
+      "href": "../slides/day1.html#lab-1-1"
+    },
+    {
+      "deck": "day1",
+      "id": "s2",
+      "n": 16,
+      "session": 2,
+      "title": "Registries and lineage",
+      "text": "Session 2 Registries and lineage Read a model version, its alias and its lineage tags Rebuild a data snapshot from its content hash Reproduce a colleague's model and prove it matches 02",
+      "href": "../slides/day1.html#s2"
+    },
+    {
+      "deck": "day1",
+      "id": "registry-recap",
+      "n": 17,
+      "session": 2,
+      "title": "A registry holds versions; an alias says which version does which job",
+      "text": "Recap from AE-205 A registry holds versions; an alias says which version does which job Version Immutable: one trained model, its run, its metrics. Alias Mutable: champion, challenger-b. Serving loads models:/fault-risk@champion. Tags The lineage: data snapshot, code hash, months, author, the reason for a promotion.",
+      "href": "../slides/day1.html#registry-recap"
+    },
+    {
+      "deck": "day1",
+      "id": "lineage-chain",
+      "n": 18,
+      "session": 2,
+      "title": "Follow the champion back to the exact data and code",
+      "text": "Lineage Follow the champion back to the exact data and code Alias champion → Version 3 registered in August → Run parameters and metrics → Snapshot de8fd6c3… (32,400 rows) → Code trainer hash Reproduce before you trust. A registry entry that cannot be rebuilt is a file with a name.",
+      "href": "../slides/day1.html#lineage-chain"
+    },
+    {
+      "deck": "day1",
+      "id": "content-addressed-data",
+      "n": 19,
+      "session": 2,
+      "title": "Name the data by its content, as DVC and lakeFS do",
+      "text": "Data versioning Name the data by its content, as DVC and lakeFS do data = df.to_csv(index=False).encode() h = sha256(data) path = store / h[:2] / f\"{h}.csv\" if not path.exists(): path.write_bytes(data) The same rows give the same name on any machine. A file called training_latest.csv says nothing about which rows it held last month. The tools add remote storage, branches and garbage collection; the idea is this one line.",
+      "href": "../slides/day1.html#content-addressed-data"
+    },
+    {
+      "deck": "day1",
+      "id": "params-come-back-as-strings",
+      "n": 20,
+      "session": 2,
+      "title": "Parameters come back from the tracking store as text",
+      "text": "A trap in Lab 1.2 Parameters come back from the tracking store as text params {\"max_iter\": \"150\", \"learning_rate\": \"0.05\", \"recent_weight\": \"4\"} retrain TypeError, or worse, a silent change of meaning Convert on purpose Keep a typed list of the training parameters and convert each one when you read it back.",
+      "href": "../slides/day1.html#params-come-back-as-strings"
+    },
+    {
+      "deck": "day1",
+      "id": "reproduced-row-by-row",
+      "n": 21,
+      "session": 2,
+      "title": "A reproduction matches on data hash, code hash and every prediction",
+      "text": "Lab 1.2 · step 4 A reproduction matches on data hash, code hash and every prediction = snapshot hash rebuilt from the months = training code hash 0.0 largest difference in predicted risk on 1,200 holdout feeders The same code on \"the latest training file\" (up to August) gives another hash and predictions that differ by up to half the scale.",
+      "href": "../slides/day1.html#reproduced-row-by-row"
+    },
+    {
+      "deck": "day1",
+      "id": "environment-is-part",
+      "n": 22,
+      "session": 2,
+      "title": "The library versions are part of the release too",
+      "text": "What lineage still misses The library versions are part of the release too The same code and data on another scikit-learn version can give different trees. labs/uv.lock pins every package; the capstone repository commits its own lock file. A container image digest pins the operating system and Python as well (AE-205). In Colab the libraries are Colab's, so a rebuild there can differ from your laptop's by a few thousandths: that difference is an environment change, and now you can name it.",
+      "href": "../slides/day1.html#environment-is-part"
+    },
+    {
+      "deck": "day1",
+      "id": "checkpoint-2",
+      "n": 23,
+      "session": 2,
+      "title": "Reproduced, or just similar?",
+      "text": "Checkpoint Reproduced, or just similar? You retrain Lamya's model from the shared training file and get the same AUC to three decimals, but the data hash differs from the registry tag. What do you conclude? It is reproduced: the AUC matches The hash function is unreliable across machines Update the registry tag to the new hash It is a different model: rebuild the snapshot from the months in the lineage",
+      "href": "../slides/day1.html#checkpoint-2"
+    },
+    {
+      "deck": "day1",
+      "id": "lab-1-2",
+      "n": 24,
+      "session": 2,
+      "title": "Reproduce a model from the registry",
+      "text": "Lab 1.2 · 25 min Reproduce a model from the registry Find the champion fault-risk model in the registry, follow its tags to the data snapshot and the trainer commit, retrain it and show that the metric and the predictions match. D1_2_registry_lineage.ipynb Find the champion and read its lineage 6 min Rebuild the data snapshot and check its hash 6 min Retrain with the recorded parameters 7 min Compare metric and predictions 6 min ✱ Stretch: Show why the latest training file does not reproduce the model",
+      "href": "../slides/day1.html#lab-1-2"
+    },
+    {
+      "deck": "day1",
+      "id": "s3",
+      "n": 25,
+      "session": 3,
+      "title": "Pipelines with validation",
+      "text": "Session 3 Pipelines with validation Write a data contract as a schema with types, ranges and allowed values Add batch checks: row count and duplicate keys Make validation a pipeline step that stops the run with a report 03",
+      "href": "../slides/day1.html#s3"
+    },
+    {
+      "deck": "day1",
+      "id": "corrupt-batch-trains-fine",
+      "n": 26,
+      "session": 3,
+      "title": "A broken batch trains without an error",
+      "text": "The September batch A broken batch trains without an error Al-Hadba's load arrived as a fraction: feeder F-0801 reads 0.815, not 81.5. 36 rows arrived twice. 14 Al-Sahil rows carry the code \"SAH \", with a trailing space. Training does not complain Every value is a valid number or string. The model learns that Al-Hadba never has load, and its metric on the same broken data can look fine.",
+      "href": "../slides/day1.html#corrupt-batch-trains-fine"
+    },
+    {
+      "deck": "day1",
+      "id": "data-contract",
+      "n": 27,
+      "session": 3,
+      "title": "A contract says what every row and every batch must be",
+      "text": "Data contracts A contract says what every row and every batch must be Row rules Types, patterns (^F-\\d{4}$), allowed values, physical ranges (load 20 to 150 percent of rating), no nulls. Batch rules One row per feeder, every feeder present (within 2%), the month the file claims. Agree it with the data owner. The SCADA export team signs the contract; your pipeline enforces it on every delivery.",
+      "href": "../slides/day1.html#data-contract"
+    },
+    {
+      "deck": "day1",
+      "id": "contract-as-schema",
+      "n": 28,
+      "session": 3,
+      "title": "The contract as a pandera schema",
+      "text": "Lab 1.3 · step 1 The contract as a pandera schema import pandera.pandas as pa SCHEMA = pa.DataFrameSchema({ \"feeder_id\": pa.Column(str, pa.Check.str_matches(r\"^F-\\d{4}$\")), \"region\": pa.Column(str, pa.Check.isin([\"RIM\", \"HAD\", \"SAH\", \"WAD\", \"JAB\", \"NAK\"])), \"load_peak_pct\": pa.Column(float, pa.Check.in_range(20, 150)), \"fault_30d\": pa.Column(int, pa.Check.isin([0, 1])), ... }, strict=True) SCHEMA.validate(df, lazy=True) # every failure, not the first",
+      "href": "../slides/day1.html#contract-as-schema"
+    },
+    {
+      "deck": "day1",
+      "id": "validation-step-stops-run",
+      "n": 29,
+      "session": 3,
+      "title": "Validation is a step that can stop the run",
+      "text": "Lab 1.3 · step 3 Validation is a step that can stop the run load the batch → validate contract and batch rules → train only if valid → gate Session 4 A failed validation raises a stop, writes a report, and leaves the champion untouched. An orchestrator (Prefect, Airflow, Kubeflow Pipelines) records the run as stopped, not failed.",
+      "href": "../slides/day1.html#validation-step-stops-run"
+    },
+    {
+      "deck": "day1",
+      "id": "three-batches-result",
+      "n": 30,
+      "session": 3,
+      "title": "July and August train; September stops at validation",
+      "text": "Lab 1.3 · step 4, from the course's run July and August train; September stops at validation 2026-07 load ok · validate ok · train ok → SUCCEEDED 2026-08 load ok · validate ok · train ok → SUCCEEDED 2026-09 load ok · validate STOPPED: 3 contract problems report 36 duplicate feeder_id rows · load_peak_pct: 807 rows outside 20 to 150 · region: 14 rows not an allowed code",
+      "href": "../slides/day1.html#three-batches-result"
+    },
+    {
+      "deck": "day1",
+      "id": "report-dont-repair",
+      "n": 31,
+      "session": 3,
+      "title": "Report the fault to the owner; do not quietly repair it",
+      "text": "What the pipeline must not do Report the fault to the owner; do not quietly repair it Quiet repairs Dropping duplicates, multiplying small loads by 100, stripping spaces: each hides a broken export that will break again. Stop, quarantine, report Keep the failing rows apart, send the counts and one example, retrain when the corrected batch arrives.",
+      "href": "../slides/day1.html#report-dont-repair"
+    },
+    {
+      "deck": "day1",
+      "id": "checkpoint-3",
+      "n": 32,
+      "session": 3,
+      "title": "Where does validation go?",
+      "text": "Checkpoint Where does validation go? A batch delivers one region's load as a fraction instead of a percentage. Where should the pipeline catch it? In a contract step before training, which stops the run and reports the column In the promotion gate, when the new model's AUC drops When crews complain about the inspection list In a cleaning step that multiplies values below 2 by 100",
+      "href": "../slides/day1.html#checkpoint-3"
+    },
+    {
+      "deck": "day1",
+      "id": "lab-1-3",
+      "n": 33,
+      "session": 3,
+      "title": "A validation step that stops training",
+      "text": "Lab 1.3 · 25 min A validation step that stops training Write the feeder batch contract as a pandera schema, add batch checks and run the pipeline on three monthly batches: two train, the corrupt one stops with a report. D1_3_validation_step.ipynb The contract as a schema 8 min Batch checks: row count and duplicates 5 min The step that stops the run 7 min Run the pipeline on three batches 5 min ✱ Stretch: Quarantine the failing rows and write the report for the data owner",
+      "href": "../slides/day1.html#lab-1-3"
+    },
+    {
+      "deck": "day1",
+      "id": "s4",
+      "n": 34,
+      "session": 4,
+      "title": "Promotion gates",
+      "text": "Session 4 Promotion gates Score champion and challengers on the same holdout Compare overall and by region with a stated tolerance Promote by moving the registry alias, with the reason logged 04",
+      "href": "../slides/day1.html#s4"
+    },
+    {
+      "deck": "day1",
+      "id": "salt-fog-drift",
+      "n": 35,
+      "session": 4,
+      "title": "Salt fog started tripping coastal lines, and the champion had never seen it",
+      "text": "August in Al-Sahil Salt fog started tripping coastal lines, and the champion had never seen it From August, overhead feeders within 10 km of the coast fault far more often. The champion was trained on November to July: distance to the coast never mattered. Two challengers were trained in October on February to August. 0.742 champion's AUC in Al-Sahil on the August holdout (0.830 overall)",
+      "href": "../slides/day1.html#salt-fog-drift"
+    },
+    {
+      "deck": "day1",
+      "id": "champion-challenger-gate",
+      "n": 36,
+      "session": 4,
+      "title": "A challenger is promoted only when it beats the champion on the same holdout",
+      "text": "Champion and challenger A challenger is promoted only when it beats the champion on the same holdout Same holdout The quarter of feeders no model trained on, in the newest month with complete labels. Overall Better than the champion's AUC. By region No region more than 0.03 worse. Why regions. Crews and customers live in regions. An average can hide a region that pays for everyone else's gain.",
+      "href": "../slides/day1.html#champion-challenger-gate"
+    },
+    {
+      "deck": "day1",
+      "id": "auc-by-region-table",
+      "n": 37,
+      "session": 4,
+      "title": "Both challengers win overall; one loses Al-Jabal",
+      "text": "Lab 1.4 · step 2, from the course's run Both challengers win overall; one loses Al-Jabal all RIM HAD SAH WAD JAB NAK champion 0.830 0.889 0.814 0.742 0.774 0.879 0.748 challenger-a 0.851 0.888 0.812 0.917 0.784 0.810 0.809 challenger-b 0.872 0.890 0.815 0.919 0.779 0.873 0.811",
+      "href": "../slides/day1.html#auc-by-region-table"
+    },
+    {
+      "deck": "day1",
+      "id": "first-cut-delayed-labels",
+      "n": 38,
+      "session": 4,
+      "title": "Challenger A learned from labels that had not arrived yet",
+      "text": "The cause behind challenger A Challenger A learned from labels that had not arrived yet The first cut of the August batch came before the inspections of the most wooded Al-Jabal feeders were entered. Their faults read 0, so A learned that wooded mountain feeders are safe. The complete batch came three weeks later; challenger B was trained on it. A data problem, caught by a model gate No contract rule fails: 0 is a valid label. Only the regional comparison shows it.",
+      "href": "../slides/day1.html#first-cut-delayed-labels"
+    },
+    {
+      "deck": "day1",
+      "id": "promote-by-alias",
+      "n": 39,
+      "session": 4,
+      "title": "Promotion moves an alias, and the old champion stays one move away",
+      "text": "Lab 1.4 · step 4 Promotion moves an alias, and the old champion stays one move away old = client.get_model_version_by_alias(\"fault-risk\", \"champion\").version new = client.get_model_version_by_alias(\"fault-risk\", \"challenger-b\").version client.set_registered_model_alias(\"fault-risk\", \"previous-champion\", old) client.set_registered_model_alias(\"fault-risk\", \"champion\", new) client.set_model_version_tag(\"fault-risk\", new, \"promoted_reason\", \"passed overall and in every region (holdout 2026-08, tolerance 0.03)\")",
+      "href": "../slides/day1.html#promote-by-alias"
+    },
+    {
+      "deck": "day1",
+      "id": "tolerance-is-noise",
+      "n": 40,
+      "session": 4,
+      "title": "A rule with no tolerance rejects every challenger on noise",
+      "text": "The tolerance A rule with no tolerance rejects every challenger on noise 200 holdout feeders per region, 16 to 81 of them with a fault in August. Resample them and a region's AUC moves by a few hundredths. Challenger B is at most 0.006 worse in any region (Al-Jabal): noise. A is 0.069 worse there: not noise. Stretch. Bootstrap the Al-Wadi gap of challenger B and read whether its interval includes zero.",
+      "href": "../slides/day1.html#tolerance-is-noise"
+    },
+    {
+      "deck": "day1",
+      "id": "checkpoint-4",
+      "n": 41,
+      "session": 4,
+      "title": "Better on average",
+      "text": "Checkpoint Better on average Challenger A beats the champion overall (0.851 against 0.830) and is 0.069 worse in Al-Jabal. The tolerance is 0.03. What happens? Promote it: the overall gain is larger than one region's loss Raise the tolerance to 0.07 for this release Reject it, record the region and the cause, and look at challenger B Use A everywhere except Al-Jabal",
+      "href": "../slides/day1.html#checkpoint-4"
+    },
+    {
+      "deck": "day1",
+      "id": "lab-1-4",
+      "n": 42,
+      "session": 4,
+      "title": "Champion, challenger and the regional gate",
+      "text": "Lab 1.4 · 25 min Champion, challenger and the regional gate Compare the champion with two challengers overall and by region; one is better overall but worse in Al-Jabal, one passes both; promote only the one that passes. D1_4_promotion_gate.ipynb Score the champion and two challengers 6 min AUC overall and by region 6 min The gate rule 7 min Promote by moving the alias 6 min ✱ Stretch: A bootstrap interval for the regional gap",
+      "href": "../slides/day1.html#lab-1-4"
+    },
+    {
+      "deck": "day1",
+      "id": "day-1-recap",
+      "n": 43,
+      "session": 4,
+      "title": "Know what ran, rebuild it, stop bad data, and gate by region",
+      "text": "Day 1 recap Know what ran, rebuild it, stop bad data, and gate by region One release unit Seven parts, hashed together; the served model recorded. Lineage you can rebuild Alias, version, run, snapshot hash, code hash. Two gates A contract before training; a regional comparison before promotion.",
+      "href": "../slides/day1.html#day-1-recap"
+    },
+    {
+      "deck": "day1",
+      "id": "tomorrow-deliver",
+      "n": 44,
+      "session": 4,
+      "title": "Deliver: the same artefact to production, language model releases, a canary that rolls back, and cost",
+      "text": "Tomorrow · Day 2 Deliver: the same artefact to production, language model releases, a canary that rolls back, and cost The delivery workflow is written and simulated in a notebook, so nothing new is needed. Nabd's three candidate releases are waiting, and so is the model snapshot from today's unrecorded change.",
+      "href": "../slides/day1.html#tomorrow-deliver"
+    },
+    {
+      "deck": "day2",
+      "id": "title",
+      "n": 1,
+      "session": 0,
+      "title": "Deliver",
+      "text": "SDAIA Academy · Operating Machine Learning and Language Model Systems Deliver Day 2: The same artefact from merge to production, language model changes through a gate, a canary that rolls back, and the cost of each outcome AI Engineering Track4 teaching days + capstone day4 sessions · 4 labsAE-305",
+      "href": "../slides/day2.html#title"
+    },
+    {
+      "deck": "day2",
+      "id": "agenda",
+      "n": 2,
+      "session": 0,
+      "title": "Deliver",
+      "text": "Today Deliver Session 1 · Continuous delivery for models Merge, staging and production promote one artefact by digest, with a person approving the last step Session 2 · Language model releases A prompt edit, a model swap and an index refresh are releases, each through the same evaluation gate Session 3 · Shadow and canary on evidence Shadow first, then canary stages that advance only on enough evidence and roll back on a stated trigger Session 4 · Cost and capacity signals Cost per successful outcome, cache hit rate and utilisation for each system, shown back by team",
+      "href": "../slides/day2.html#agenda"
+    },
+    {
+      "deck": "day2",
+      "id": "review-day-1",
+      "n": 3,
+      "session": 0,
+      "title": "Which part of the release unit changed?",
+      "text": "Review of Day 1 Which part of the release unit changed? The fault-risk model's registry version, threshold and code hash are unchanged, but its predictions on the same feeders differ from last week's. What do you check first? Nothing: the model version is the same, so it is noise Retrain and compare the AUC The input data and environment the predictions were made with Lower the promotion tolerance",
+      "href": "../slides/day2.html#review-day-1"
+    },
+    {
+      "deck": "day2",
+      "id": "s1",
+      "n": 4,
+      "session": 1,
+      "title": "Continuous delivery for models",
+      "text": "Session 1 Continuous delivery for models Promote one artefact by digest instead of rebuilding it Add a staging check and an approval step before production Keep a deployment log a reviewer can audit 01",
+      "href": "../slides/day2.html#s1"
+    },
+    {
+      "deck": "day2",
+      "id": "push-to-production",
+      "n": 5,
+      "session": 1,
+      "title": "Every push to main goes straight to production, rebuilt with the tag latest",
+      "text": "Where Wahaj starts Every push to main goes straight to production, rebuilt with the tag latest jobs: deploy: steps: - run: make test - run: docker build -t registry.wahaj.example/nabd:latest . - run: docker push registry.wahaj.example/nabd:latest - run: ./deploy.sh production registry.wahaj.example/nabd:latest Lab 2.1's checker fails it on six of seven rules: no digest published, no staging, no approval, a moving tag, nothing promoted, no smoke check.",
+      "href": "../slides/day2.html#push-to-production"
+    },
+    {
+      "deck": "day2",
+      "id": "promote-one-digest",
+      "n": 6,
+      "session": 1,
+      "title": "Build once; promote the same digest through every environment",
+      "text": "Continuous delivery for models Build once; promote the same digest through every environment Merge to main tests run → Build push, publish the digest → Staging deploy the digest, smoke check → Approval a reviewer, not the author → Production the same digest A rebuild is a new artefact. The same commit can pull a newer base image or package. Only the digest that passed staging goes on.",
+      "href": "../slides/day2.html#promote-one-digest"
+    },
+    {
+      "deck": "day2",
+      "id": "digest-as-output",
+      "n": 7,
+      "session": 1,
+      "title": "The build job hands its digest to the jobs that deploy",
+      "text": "Lab 2.1 · step 2 The build job hands its digest to the jobs that deploy build: outputs: digest: ${{ steps.push.outputs.digest }} deploy-staging: needs: build environment: staging steps: - run: ./deploy.sh staging ${{ needs.build.outputs.digest }} - run: ./smoke_check.sh staging deploy-production: needs: [build, deploy-staging] environment: production",
+      "href": "../slides/day2.html#digest-as-output"
+    },
+    {
+      "deck": "day2",
+      "id": "approval-is-a-rule",
+      "n": 8,
+      "session": 1,
+      "title": "The approval lives in the environment's protection rules, not in the file",
+      "text": "The approval step The approval lives in the environment's protection rules, not in the file Required reviewers: up to six people or teams; one approval lets the job start. Self-review can be blocked: Dhafer merged, so Mutab approves. A pull request cannot remove the rule by editing the workflow. Plan limits On GitHub's free plans, required reviewers work on public repositories only. The capstone repository is public.",
+      "href": "../slides/day2.html#approval-is-a-rule"
+    },
+    {
+      "deck": "day2",
+      "id": "simulated-release",
+      "n": 9,
+      "session": 1,
+      "title": "The release waits at production until a reviewer who did not merge approves",
+      "text": "Lab 2.1 · step 4, from the course's run The release waits at production until a reviewer who did not merge approves build built sha256:ce56953fe2d35ec1 staging deployed the digest · smoke check passed production waiting for approval approval Dhafer Al-Hazzani: refused, he merged the change production approved by Mutab Al-Shalhoub · deployed the same digest",
+      "href": "../slides/day2.html#simulated-release"
+    },
+    {
+      "deck": "day2",
+      "id": "rollback-is-a-redeploy",
+      "n": 10,
+      "session": 1,
+      "title": "A rollback redeploys a recorded digest through the same gate",
+      "text": "The other direction A rollback redeploys a recorded digest through the same gate on: workflow_dispatch: inputs: digest: {required: true} jobs: rollback-production: environment: production steps: - run: ./deploy.sh production ${{ inputs.digest }} No build: the digest already passed once. The same reviewers approve it, so a rollback is also recorded. On a cluster, Argo CD or Argo Rollouts keep the previous revision for the same purpose.",
+      "href": "../slides/day2.html#rollback-is-a-redeploy"
+    },
+    {
+      "deck": "day2",
+      "id": "checkpoint-1",
+      "n": 11,
+      "session": 1,
+      "title": "Approved, then rebuilt",
+      "text": "Checkpoint Approved, then rebuilt The production job checks out the approved commit, builds the image again and deploys it. Staging tested an image built from the same commit an hour earlier. What is wrong? Production may run an artefact nobody tested: it should deploy the digest staging tested Nothing: the same commit gives the same image Nothing: a reviewer approved the commit Only the build time: run both builds at once",
+      "href": "../slides/day2.html#checkpoint-1"
+    },
+    {
+      "deck": "day2",
+      "id": "lab-2-1",
+      "n": 12,
+      "session": 1,
+      "title": "Merge to staging to production",
+      "text": "Lab 2.1 · 25 min Merge to staging to production Turn a single-job workflow into merge, staging and production jobs that promote one digest, add the approval step, check the workflow and simulate a release. D2_1_delivery_pipeline.ipynb Read the starting workflow 4 min Staging and production jobs that promote one digest 8 min The approval step and its reviewers 6 min Check it and simulate a release 7 min ✱ Stretch: A rollback job that redeploys the previous digest",
+      "href": "../slides/day2.html#lab-2-1"
+    },
+    {
+      "deck": "day2",
+      "id": "s2",
+      "n": 13,
+      "session": 2,
+      "title": "Language model releases",
+      "text": "Session 2 Language model releases Describe each language model change as a change to the release unit Run a provided evaluation gate on a champion and three candidates Block a release on the metric that matters, not on the average 02",
+      "href": "../slides/day2.html#s2"
+    },
+    {
+      "deck": "day2",
+      "id": "three-llm-changes",
+      "n": 14,
+      "session": 2,
+      "title": "A prompt, a model and an index are each a release of Nabd",
+      "text": "Language model releases A prompt, a model and an index are each a release of Nabd Candidate Release Part changed Why someone wants it Prompt edit nabd-2026.11.1 prompt v1 to v2 always cite manual and section Model swap nabd-2026.11.2 steady to swift cheaper and faster Index refresh nabd-2026.11.3 manuals v3 to v4 MM-02 revised, MM-11 added One part each. When a release changes one part, the gate's result says which part caused it.",
+      "href": "../slides/day2.html#three-llm-changes"
+    },
+    {
+      "deck": "day2",
+      "id": "provided-eval-gate",
+      "n": 15,
+      "session": 2,
+      "title": "24 cases, graded by code, with hard floors and allowed drops",
+      "text": "The evaluation gate, ready-made from AE-303 24 cases, graded by code, with hard floors and allowed drops Metric Floor Allowed drop Safety procedures complete, steps in order 1.00 0.00 Out-of-scope questions declined 1.00 0.00 Answer has the required facts 0.75 0.05 Citation correct none 0.05 Case pass rate none 0.05",
+      "href": "../slides/day2.html#provided-eval-gate"
+    },
+    {
+      "deck": "day2",
+      "id": "gate-results",
+      "n": 16,
+      "session": 2,
+      "title": "Two candidates ship; the model swap is blocked on one metric",
+      "text": "Lab 2.2 · step 3, from the course's run (scripted stand-in model) Two candidates ship; the model swap is blocked on one metric champion prompt v2 model swap index v4 answer correct 0.917 0.917 0.917 1.000 citation correct 0.150 0.950 0.150 0.150 safety steps complete 1.000 1.000 0.833 1.000 case pass rate 0.250 0.917 0.208 0.292 decision ship block ship",
+      "href": "../slides/day2.html#gate-results"
+    },
+    {
+      "deck": "day2",
+      "id": "missing-safety-steps",
+      "n": 17,
+      "session": 2,
+      "title": "The cheaper model dropped the last two steps of the isolation procedure",
+      "text": "Lab 2.2 · step 4 The cheaper model dropped the last two steps of the isolation procedure CrewGive me the isolation steps before I work on the feeder conductor. Nabd, model swap1. Obtain the switching programme. 2. Open the breaker and the load-break switch. 3. Lock and tag every isolation point. 4. Prove dead with an approved tester. Missing 5. Apply earths on both sides. 6. Record the permit number. An average score hides it; a floor on safety does not.",
+      "href": "../slides/day2.html#missing-safety-steps"
+    },
+    {
+      "deck": "day2",
+      "id": "index-refresh-is-release",
+      "n": 18,
+      "session": 2,
+      "title": "An index refresh changes what the model reads, so it is gated like a model",
+      "text": "The change people underestimate An index refresh changes what the model reads, so it is gated like a model A new manual can outrank the right section for an old question. A changed chunking can split a procedure across two chunks, and the answer loses half. Here it helped: version 4 answers the R-24 interlock and salt fog questions that version 3 could not. Refresh as a release. Rebuild, fingerprint, gate, then switch the alias the assistant reads. Day 3 Session 4 adds a policy for when to refresh.",
+      "href": "../slides/day2.html#index-refresh-is-release"
+    },
+    {
+      "deck": "day2",
+      "id": "release-log",
+      "n": 19,
+      "session": 2,
+      "title": "Every decision is written down with the metric it was taken on",
+      "text": "Lab 2.2 · the release log Every decision is written down with the metric it was taken on {\"release\": \"nabd-2026.11.1\", \"changed\": [\"prompt\"], \"decision\": \"ship\", ...} {\"release\": \"nabd-2026.11.2\", \"changed\": [\"model\"], \"decision\": \"block\", \"decided_on\": \"safety_steps_complete\", \"reasons\": [\"safety_steps_complete 0.83 is below the floor 1.00\"]} {\"release\": \"nabd-2026.11.3\", \"changed\": [\"index\"], \"decision\": \"ship\", ...}",
+      "href": "../slides/day2.html#release-log"
+    },
+    {
+      "deck": "day2",
+      "id": "checkpoint-2",
+      "n": 20,
+      "session": 2,
+      "title": "Same score, blocked",
+      "text": "Checkpoint Same score, blocked The model swap scores the same as the champion on answer correctness and costs half as much. It fails one of six safety cases. What does the release owner do? Ship it: the average score did not fall Run the gate again until it passes Ship it with a warning in the release notes Block it, log the metric and the case, and raise it with the model's owner",
+      "href": "../slides/day2.html#checkpoint-2"
+    },
+    {
+      "deck": "day2",
+      "id": "lab-2-2",
+      "n": 21,
+      "session": 2,
+      "title": "Three changes through the evaluation gate",
+      "text": "Lab 2.2 · 25 min Three changes through the evaluation gate Run Nabd's prompt edit, model swap and index refresh through the provided evaluation gate, read the result by category and write the release log: two pass, one is blocked. D2_2_llm_release_gate.ipynb The release unit of each candidate 4 min Run the gate on the champion 6 min Run the three candidates 8 min Read by category and write the release log 7 min ✱ Stretch: Run one candidate on a live free model and compare",
+      "href": "../slides/day2.html#lab-2-2"
+    },
+    {
+      "deck": "day2",
+      "id": "s3",
+      "n": 22,
+      "session": 3,
+      "title": "Shadow and canary on evidence",
+      "text": "Session 3 Shadow and canary on evidence Compare a candidate in shadow without user impact Analyse a canary window with a minimum sample Roll back automatically on a quality or latency trigger 03",
+      "href": "../slides/day2.html#s3"
+    },
+    {
+      "deck": "day2",
+      "id": "offline-gate-not-enough",
+      "n": 23,
+      "session": 3,
+      "title": "The offline set is fixed; real traffic changes through the day",
+      "text": "Why a canary after a gate The offline set is fixed; real traffic changes through the day The provider's snapshot steady-2026-10-14 passed Nabd's offline gate. The offline cases are mostly in English. Crews ask in both languages, and the mix moves with the shift. A canary lets real traffic decide, a slice at a time, with a trigger that undoes it. Recap from AE-205 Canary and rollback for a web service. Today: for a language model change, with quality as a trigger, not only errors and latency.",
+      "href": "../slides/day2.html#offline-gate-not-enough"
+    },
+    {
+      "deck": "day2",
+      "id": "shadow-then-canary",
+      "n": 24,
+      "session": 3,
+      "title": "Shadow risks nobody; a canary risks a few, on purpose",
+      "text": "Two ways to expose a candidate Shadow risks nobody; a canary risks a few, on purpose Shadow The candidate answers a copy of every request; users see only the stable answer. Double the tokens, no user impact. Canary A share of real users get the candidate: 5%, then 25%, then 50%. Each step waits for an analysis to pass. 2,190 ms · 0.920 the candidate in 30 minutes of shadow: p95 latency and share graded ok (stable 2,170 ms, 0.907; Arabic 9% of requests)",
+      "href": "../slides/day2.html#shadow-then-canary"
+    },
+    {
+      "deck": "day2",
+      "id": "canary-analysis",
+      "n": 25,
+      "session": 3,
+      "title": "An analysis needs a minimum sample, a paired comparison and stated triggers",
+      "text": "Lab 2.3 · step 2 An analysis needs a minimum sample, a paired comparison and stated triggers if n < MIN_SAMPLE: # 50 return \"inconclusive\", f\"{n} requests\" if p95 > SLO_P95_MS: # 2,500 ms return \"fail\", \"latency trigger: ...\" if ok < ok_stable_same_requests - 0.05: # paired return \"fail\", \"quality trigger: ...\" return \"pass\", why",
+      "href": "../slides/day2.html#canary-analysis"
+    },
+    {
+      "deck": "day2",
+      "id": "argo-style-steps",
+      "n": 26,
+      "session": 3,
+      "title": "Steps in the Argo Rollouts style: set a weight, pause, analyse",
+      "text": "Lab 2.3 · step 3 Steps in the Argo Rollouts style: set a weight, pause, analyse setWeight 5 pause 60 min → setWeight 25 pause 30 min → setWeight 50 pause 30 min → 100 promote In Argo Rollouts, steps hold setWeight and pause; a background analysis that fails aborts the rollout and traffic returns to the stable version.",
+      "href": "../slides/day2.html#argo-style-steps"
+    },
+    {
+      "deck": "day2",
+      "id": "rolled-back-at-25",
+      "n": 27,
+      "session": 3,
+      "title": "5% passed; at 25% the latency trigger rolled the canary back",
+      "text": "Lab 2.3 · step 4, from the course's run 5% passed; at 25% the latency trigger rolled the canary back minute 0 setWeight 5 minute 60 pass: n=70, p95 2,123 ms, ok 0.900 against stable 0.914, Arabic 4% minute 60 setWeight 25 minute 90 fail, latency trigger: n=157, p95 3,115 ms, ok 0.803 against stable 0.873, Arabic 43% minute 90 abort: rolled back to stable",
+      "href": "../slides/day2.html#rolled-back-at-25"
+    },
+    {
+      "deck": "day2",
+      "id": "traffic-decides",
+      "n": 28,
+      "session": 3,
+      "title": "A candidate is only tested on the traffic it has seen",
+      "text": "What the canary saw that nothing else did A candidate is only tested on the traffic it has seen Offline gate Fixed cases, mostly English: passed. Shadow, 30 minutes 9% Arabic: looked better than stable. Canary at 25% 43% Arabic: failed on latency and quality. Fix the instruments too. Add Arabic cases to the offline set and run the shadow across a shift change before the next canary.",
+      "href": "../slides/day2.html#traffic-decides"
+    },
+    {
+      "deck": "day2",
+      "id": "checkpoint-3",
+      "n": 29,
+      "session": 3,
+      "title": "A clean first window",
+      "text": "Checkpoint A clean first window At 5% the canary served 40 requests in its first pause, with no latency or quality problem. The analysis's minimum sample is 50. What should the rollout do? Advance to 25%: nothing went wrong Report inconclusive and extend the pause before deciding Roll back: the sample is too small Lower the minimum sample to 40 for this release",
+      "href": "../slides/day2.html#checkpoint-3"
+    },
+    {
+      "deck": "day2",
+      "id": "lab-2-3",
+      "n": 30,
+      "session": 3,
+      "title": "A canary that rolls itself back",
+      "text": "Lab 2.3 · 25 min A canary that rolls itself back Replay a day of Nabd traffic through a canary of a new model snapshot, analyse each stage for quality and latency and let the trigger roll it back. D2_3_canary_rollback.ipynb Shadow first 5 min Analyse one canary window 8 min Stages and triggers 7 min Read where and why it rolled back 5 min ✱ Stretch: Write the same analysis as an Argo Rollouts AnalysisTemplate",
+      "href": "../slides/day2.html#lab-2-3"
+    },
+    {
+      "deck": "day2",
+      "id": "s4",
+      "n": 31,
+      "session": 4,
+      "title": "Cost and capacity signals",
+      "text": "Session 4 Cost and capacity signals Price a month of token and compute usage Compute cost per successful outcome and utilisation per system Show cost back by team and set a budget alert 04",
+      "href": "../slides/day2.html#s4"
+    },
+    {
+      "deck": "day2",
+      "id": "cost-per-success",
+      "n": 32,
+      "session": 4,
+      "title": "Divide what a system cost by the outcomes it delivered, not by its calls",
+      "text": "Cost signals Divide what a system cost by the outcomes it delivered, not by its calls Failed attempts are paid for too; the work still has to be done. Each system needs an outcome someone agrees on: a confirmed fault, an accepted answer, a resolved report. Prices in the lab are stated assumptions in riyals; replace them with your provider's list. The trap A model with half the price per call and twice the retries costs more per success.",
+      "href": "../slides/day2.html#cost-per-success"
+    },
+    {
+      "deck": "day2",
+      "id": "october-cost-table",
+      "n": 33,
+      "session": 4,
+      "title": "Per call, Mubadir looks cheap; per resolved report, it is the most expensive",
+      "text": "Lab 2.4 · step 2, from the course's run Per call, Mubadir looks cheap; per resolved report, it is the most expensive System Cost (SAR) Per request Success rate Per success classifier 40.55 0.0005 0.34 0.0635 Nabd 106.05 0.0034 0.85 0.0041 Mubadir 112.92 0.0110 0.70 0.0156 The classifier's outcome is a flagged feeder that inspection confirmed; its requests are feeder scores, so its cost per request is not comparable with the others.",
+      "href": "../slides/day2.html#october-cost-table"
+    },
+    {
+      "deck": "day2",
+      "id": "cache-hit-rate",
+      "n": 34,
+      "session": 4,
+      "title": "A date at the top of the prompt cut Nabd's cache hit rate from 0.62 to 0.12",
+      "text": "Lab 2.4 · step 3 A date at the top of the prompt cut Nabd's cache hit rate from 0.62 to 0.12 before 18 Oct 0.62 from 18 Oct 0.12 Provider prompt caches match the beginning of a request. Stable text first (instructions, tools), changing text last (date, question). Cached input tokens are priced at a tenth here: the change raised Nabd's daily cost.",
+      "href": "../slides/day2.html#cache-hit-rate"
+    },
+    {
+      "deck": "day2",
+      "id": "utilisation",
+      "n": 35,
+      "session": 4,
+      "title": "Utilisation shows what you pay for and do not use",
+      "text": "Resource use Utilisation shows what you pay for and do not use classifier 0.12 Mubadir 0.22 Nabd 0.28 The classifier keeps 24 node-hours a day provisioned for one daily batch and a monthly retrain. Scale it to zero between runs, or share the nodes.",
+      "href": "../slides/day2.html#utilisation"
+    },
+    {
+      "deck": "day2",
+      "id": "showback-and-alerts",
+      "n": 36,
+      "session": 4,
+      "title": "Show each team its cost, and alert before the budget is gone",
+      "text": "Lab 2.4 · step 4 Show each team its cost, and alert before the budget is gone Team SAR customer-care (Mubadir) 112.92 field-operations (Nabd) 84.75 asset-management (classifier) 40.55 control-room (Nabd) 21.29 Burn rate, from day 7 Month-to-date spend above the budget's share by 20%: Mubadir alerted on 15 October. Forecast Projected month-end above budget: Mubadir on the 14th, but also the classifier on the 7th, because of its planned retrain.",
+      "href": "../slides/day2.html#showback-and-alerts"
+    },
+    {
+      "deck": "day2",
+      "id": "checkpoint-4",
+      "n": 37,
+      "session": 4,
+      "title": "Cheaper per call",
+      "text": "Checkpoint Cheaper per call A new configuration of Mubadir halves the cost per model call, but the share of reports resolved without a person drops from 0.70 to 0.40. What happens to the cost per resolved report? It halves, like the cost per call It stays the same: the work is the same It falls only slightly, and every unresolved report adds a person's time on top It cannot be known without the token counts",
+      "href": "../slides/day2.html#checkpoint-4"
+    },
+    {
+      "deck": "day2",
+      "id": "lab-2-4",
+      "n": 38,
+      "session": 4,
+      "title": "Cost per successful outcome",
+      "text": "Lab 2.4 · 25 min Cost per successful outcome Price a month of Wahaj's token, compute and outcome logs, compute cost per successful outcome, cache hit rate and utilisation per system, show it back by team and set budget alerts. D2_4_cost_signals.ipynb Price the month 6 min Cost per successful outcome by system 6 min Utilisation and cache hit rate 5 min Showback by team and a budget alert 8 min ✱ Stretch: Alert on the month-end forecast, not on the spend so far",
+      "href": "../slides/day2.html#lab-2-4"
+    },
+    {
+      "deck": "day2",
+      "id": "day-2-recap",
+      "n": 39,
+      "session": 4,
+      "title": "One artefact to production, a gate and a canary for model changes, and cost per outcome",
+      "text": "Day 2 recap One artefact to production, a gate and a canary for model changes, and cost per outcome Delivery Build once, promote the digest, a reviewer who did not merge. Releases on evidence Offline gate with floors, then a canary with stated triggers. Cost signals Per successful outcome, cache hit rate, utilisation, alerts.",
+      "href": "../slides/day2.html#day-2-recap"
+    },
+    {
+      "deck": "day2",
+      "id": "tomorrow-observe",
+      "n": 40,
+      "session": 4,
+      "title": "Observe: traces, drift monitors that do not cry wolf, online evaluation and a retraining policy",
+      "text": "Tomorrow · Day 3 Observe: traces, drift monitors that do not cry wolf, online evaluation and a retraining policy Tomorrow you find out why Nabd is slow, replay a month of inputs with two hidden shifts, and grade a week of live answers.",
+      "href": "../slides/day2.html#tomorrow-observe"
+    },
+    {
+      "deck": "day3",
+      "id": "title",
+      "n": 1,
+      "session": 0,
+      "title": "Observe",
+      "text": "SDAIA Academy · Operating Machine Learning and Language Model Systems Observe Day 3: Spans for every step, drift monitors that do not cry wolf, online evaluation with a review queue, and a retraining policy AI Engineering Track4 teaching days + capstone day4 sessions · 4 labsAE-305",
+      "href": "../slides/day3.html#title"
+    },
+    {
+      "deck": "day3",
+      "id": "agenda",
+      "n": 2,
+      "session": 0,
+      "title": "Observe",
+      "text": "Today Observe Session 1 · Tracing requests end to end One trace per request with spans for retrieval, the model and each tool Session 2 · Drift, skew and delayed labels Monitors on inputs while labels are late, tuned so that a real shift alerts and a noisy day does not Session 3 · Online evaluation and review queues Sample live traces, grade them with a calibrated grader, correct for its errors and send failures to people Session 4 · Retraining and refresh policies Retrain on a trigger only when labels are ready, the cost is known and a person approves",
+      "href": "../slides/day3.html#agenda"
+    },
+    {
+      "deck": "day3",
+      "id": "review-day-2",
+      "n": 3,
+      "session": 0,
+      "title": "Which evidence rolled the canary back?",
+      "text": "Review of Day 2 Which evidence rolled the canary back? A new snapshot passed the offline gate and its shadow run, then the canary at 25% rolled back. What made the difference? The offline gate was run again with more cases Real traffic at 25% included the Arabic-heavy shift the earlier evidence never saw The shadow run had failed and was ignored A reviewer refused the release at 25%",
+      "href": "../slides/day3.html#review-day-2"
+    },
+    {
+      "deck": "day3",
+      "id": "s1",
+      "n": 4,
+      "session": 1,
+      "title": "Tracing requests end to end",
+      "text": "Session 1 Tracing requests end to end Add spans with attributes for retrieval, model and tool calls Find the slowest step from the traces Keep personal data out of span attributes 01",
+      "href": "../slides/day3.html#s1"
+    },
+    {
+      "deck": "day3",
+      "id": "nabd-is-slow",
+      "n": 5,
+      "session": 1,
+      "title": "Crews say Nabd is slow, and everyone blames the model",
+      "text": "The complaint Crews say Nabd is slow, and everyone blames the model A request runs four kinds of step: retrieval, a model call, a tool call, a second model call. Logs say the request took long. They do not say which step. A trace records every step of one request as a span, with its parent, its duration and its attributes. Guessing costs Swapping to a faster model would have cost a release, an evaluation and a gate, and fixed nothing.",
+      "href": "../slides/day3.html#nabd-is-slow"
+    },
+    {
+      "deck": "day3",
+      "id": "trace-and-spans",
+      "n": 6,
+      "session": 1,
+      "title": "One trace per request; one span per step, nested under the request",
+      "text": "Traces and spans One trace per request; one span per step, nested under the request invoke_agent Nabd 497 ms · release nabd-2026.10.1 · retrieval manuals 257 ms · index v3 · 3 hits · chat steady 81 ms · 329 tokens in, 16 out · execute_tool get_feeder_status 78 ms · chat steady 80 ms · 369 tokens in, 15 out \"What is the status of feeder F-0213?\", from the course's run with the production configuration and the scripted stand-in model.",
+      "href": "../slides/day3.html#trace-and-spans"
+    },
+    {
+      "deck": "day3",
+      "id": "genai-conventions",
+      "n": 7,
+      "session": 1,
+      "title": "Name spans and attributes the way back ends already understand",
+      "text": "OpenTelemetry GenAI semantic conventions Name spans and attributes the way back ends already understand Operation Span name Attributes invoke_agent invoke_agent Nabd gen_ai.agent.name retrieval retrieval manuals the index version, the hits chat chat steady gen_ai.request.model, gen_ai.response.model, gen_ai.usage.input_tokens and output_tokens execute_tool execute_tool get_feeder_status gen_ai.tool.name, an error status Status: Development. The conventions moved to their own repository and can still change. Pin the version you follow.",
+      "href": "../slides/day3.html#genai-conventions"
+    },
+    {
+      "deck": "day3",
+      "id": "tracer-and-exporter",
+      "n": 8,
+      "session": 1,
+      "title": "A provider, a processor, an exporter, then a span around each step",
+      "text": "Lab 3.1 · steps 1 and 2 A provider, a processor, an exporter, then a span around each step exporter = InMemorySpanExporter() # production: OTLP to a collector provider = TracerProvider() provider.add_span_processor(SimpleSpanProcessor(exporter)) tracer = provider.get_tracer(\"wahaj.nabd\") class TracedNabd(nabd.Nabd): def retrieve(self, question): with tracer.start_as_current_span(\"retrieval manuals\") as span: span.set_attribute(\"gen_ai.operation.name\", \"retrieval\") return super().retrieve(question)",
+      "href": "../slides/day3.html#tracer-and-exporter"
+    },
+    {
+      "deck": "day3",
+      "id": "time-breakdown",
+      "n": 9,
+      "session": 1,
+      "title": "Retrieval took 71% of the request time, the model 27%",
+      "text": "Lab 3.1 · step 3, from the course's run Retrieval took 71% of the request time, the model 27% retrieval 0.71 chat 0.27 execute_tool 0.02 Ten crew questions; median request 338 ms. The production configuration has cache_index=False: the index is fetched from storage and rebuilt on every request.",
+      "href": "../slides/day3.html#time-breakdown"
+    },
+    {
+      "deck": "day3",
+      "id": "measure-again",
+      "n": 10,
+      "session": 1,
+      "title": "Cache the index once per process, then measure again with the same spans",
+      "text": "Lab 3.1 · step 4 Cache the index once per process, then measure again with the same spans 338 → 82 ms median request, ten questions 0.71 → 0.005 retrieval's share of request time Same instrument, before and after. A fix is shown by the measurement that found the problem, not by a feeling that it is faster.",
+      "href": "../slides/day3.html#measure-again"
+    },
+    {
+      "deck": "day3",
+      "id": "no-pii-in-spans",
+      "n": 11,
+      "session": 1,
+      "title": "Spans travel far: keep questions and answers out, or redact them first",
+      "text": "What not to record Spans travel far: keep questions and answers out, or redact them first Traces are copied to a collector and kept for weeks, read by people outside the team. Crew questions sometimes hold a customer's phone, account number or national ID. Record content only when a purpose needs it, and redact before it is recorded. Outage on F-0213; customer called from [phone] about account [account], ID [national-id].",
+      "href": "../slides/day3.html#no-pii-in-spans"
+    },
+    {
+      "deck": "day3",
+      "id": "checkpoint-1",
+      "n": 12,
+      "session": 1,
+      "title": "Where the time goes",
+      "text": "Checkpoint Where the time goes A trace of a slow Nabd request shows the retrieval span at 260 ms and each model span at 80 ms. The team proposes a faster model. What do you say? Agree: model calls are usually the slow part Collect a month of traces before deciding Add more replicas of Nabd Fix retrieval first, then measure again with the same spans",
+      "href": "../slides/day3.html#checkpoint-1"
+    },
+    {
+      "deck": "day3",
+      "id": "lab-3-1",
+      "n": 13,
+      "session": 1,
+      "title": "Spans for Nabd and the slowest step",
+      "text": "Lab 3.1 · 25 min Spans for Nabd and the slowest step Instrument Nabd with OpenTelemetry spans for retrieval, model and tool calls, run ten crew questions, find the slowest step, fix it and measure again. D3_1_tracing.ipynb A tracer with an in-memory exporter 4 min Spans for retrieval, model and tool 9 min Ten requests and the slowest step 7 min Fix it and measure again 5 min ✱ Stretch: Redact phone numbers and account numbers in span attributes",
+      "href": "../slides/day3.html#lab-3-1"
+    },
+    {
+      "deck": "day3",
+      "id": "s2",
+      "n": 14,
+      "session": 2,
+      "title": "Drift, skew and delayed labels",
+      "text": "Session 2 Drift, skew and delayed labels Compute a drift statistic per feature per day Tell drift from training and serving skew Tune thresholds and persistence to remove false alarms 02",
+      "href": "../slides/day3.html#s2"
+    },
+    {
+      "deck": "day3",
+      "id": "labels-arrive-late",
+      "n": 15,
+      "session": 2,
+      "title": "A fault is known 30 days after the score, and later in the mountains",
+      "text": "Why watch inputs A fault is known 30 days after the score, and later in the mountains Day 0 the feeder is scored → Day 30 most labels known → About day 60 Al-Jabal inspections entered Until the labels arrive, the only signals are the inputs and the scores. A first cut of the labels is not the truth: Lab 1.4's challenger A learned from one.",
+      "href": "../slides/day3.html#labels-arrive-late"
+    },
+    {
+      "deck": "day3",
+      "id": "psi",
+      "n": 16,
+      "session": 2,
+      "title": "The population stability index compares a day's distribution with a reference",
+      "text": "A drift statistic The population stability index compares a day's distribution with a reference edges = quantiles(reference, deciles) ref = share of reference per bin cur = share of today per bin psi = sum((cur - ref) * ln(cur / ref)) PSI Rule of thumb below 0.1 stable 0.1 to 0.25 a moderate move above 0.25 a large move",
+      "href": "../slides/day3.html#psi"
+    },
+    {
+      "deck": "day3",
+      "id": "naive-alerts",
+      "n": 17,
+      "session": 2,
+      "title": "PSI above 0.1 against the first week: 51 alerts in 23 days",
+      "text": "Lab 3.2 · steps 1 and 2, from the course's run PSI above 0.1 against the first week: 51 alerts in 23 days temperature 20 load 20 dust 11 The heat spike of day 8, the quiet day 17 (120 feeders) and October's seasonal cooling all alert, next to the two real shifts.",
+      "href": "../slides/day3.html#naive-alerts"
+    },
+    {
+      "deck": "day3",
+      "id": "three-tuning-rules",
+      "n": 18,
+      "session": 2,
+      "title": "Each tuning rule removes one kind of false alarm",
+      "text": "Lab 3.2 · step 3 Each tuning rule removes one kind of false alarm Rolling reference The previous seven days: the season is absorbed, a step is not. Minimum sample Fewer than 200 feeders: not judged. Persistence Above 0.2 on three judged days in a row. 51 → 2 alerts: load from day 12 (fired day 14), dust from day 22 (fired day 24)",
+      "href": "../slides/day3.html#three-tuning-rules"
+    },
+    {
+      "deck": "day3",
+      "id": "drift-or-skew",
+      "n": 19,
+      "session": 2,
+      "title": "Load stepped up about 10% overnight while temperatures fell: the meters changed, not the grid",
+      "text": "Drift or skew Load stepped up about 10% overnight while temperatures fell: the meters changed, not the grid Skew Serving computes a feature differently from training. Here: recalibrated meters read high from day 12. Fix the data; retraining would learn the error. Drift The world changes. Here: dust rises from day 21. Watch the labels and consider retraining when they arrive. Stretch: the median ratio of serving load to the same feeder's batch load steps by about 10% on day 12.",
+      "href": "../slides/day3.html#drift-or-skew"
+    },
+    {
+      "deck": "day3",
+      "id": "rolling-blind-spot",
+      "n": 20,
+      "session": 2,
+      "title": "A rolling reference absorbs a slow drift, so keep one fixed comparison too",
+      "text": "What the tuned monitor cannot see A rolling reference absorbs a slow drift, so keep one fixed comparison too Daily: rolling seven-day reference, for steps and fast changes. Monthly: against the training snapshot, for slow moves that matter. When labels arrive: the model's own metrics by region, which inputs cannot replace. Three files leave the lab. The dashboard (PSI per feature per day, with the threshold and the alerts), the alert rules, and the note: shifts found, alarms removed and by which rule, what is no longer visible. Lamya signs the note.",
+      "href": "../slides/day3.html#rolling-blind-spot"
+    },
+    {
+      "deck": "day3",
+      "id": "checkpoint-2",
+      "n": 21,
+      "session": 2,
+      "title": "One hot day",
+      "text": "Checkpoint One hot day Temperature's PSI is 1.56 on day 8, then below 0.1 the next day. The monitor needs three days in a row above 0.2. What happens, and is it right? An alert fires: 1.56 is far above 0.2 No alert: a one-day heat spike is weather, and it is logged The monitor is broken and must be retuned Retrain to include the hot day",
+      "href": "../slides/day3.html#checkpoint-2"
+    },
+    {
+      "deck": "day3",
+      "id": "lab-3-2",
+      "n": 22,
+      "session": 2,
+      "title": "Two shifts in a replayed month",
+      "text": "Lab 3.2 · 25 min Two shifts in a replayed month Replay a month of classifier inputs with two planted shifts, alert naively and count the false alarms, then tune the threshold and persistence until only the two shifts alert. D3_2_drift_monitors.ipynb Drift per feature per day 7 min Naive alerts and their false alarms 5 min Tune threshold and persistence 8 min The note: shifts found, alarms removed 5 min ✱ Stretch: Measure skew between the training snapshot and serving for one feature",
+      "href": "../slides/day3.html#lab-3-2"
+    },
+    {
+      "deck": "day3",
+      "id": "s3",
+      "n": 23,
+      "session": 3,
+      "title": "Online evaluation and review queues",
+      "text": "Session 3 Online evaluation and review queues Redact traces before storage and apply a retention rule Grade a sample with a calibrated grader and correct the rate Route failures and uncertain cases to a review queue 03",
+      "href": "../slides/day3.html#s3"
+    },
+    {
+      "deck": "day3",
+      "id": "offline-and-online",
+      "n": 24,
+      "session": 3,
+      "title": "The gate checks 24 cases once; Nabd answers hundreds of questions a day",
+      "text": "Online evaluation The gate checks 24 cases once; Nabd answers hundreds of questions a day Record traces, redacted → Sample a fixed number, seeded → Grade the calibrated grader → Correct for the grader's errors → Review failures and a few passes",
+      "href": "../slides/day3.html#offline-and-online"
+    },
+    {
+      "deck": "day3",
+      "id": "redact-before-storage",
+      "n": 25,
+      "session": 3,
+      "title": "Redact before the trace is stored, not before it is displayed",
+      "text": "Lab 3.3 · step 1 Redact before the trace is stored, not before it is displayed \"The customer [name] called from [phone].\" \"Account [account], national ID [national-id].\" 87 of 400 questions held personal data. Grading needs the answer and the context, not the customer. Data never stored needs no access control and no deletion.",
+      "href": "../slides/day3.html#redact-before-storage"
+    },
+    {
+      "deck": "day3",
+      "id": "raw-rate",
+      "n": 26,
+      "session": 3,
+      "title": "The grader fails 29 of 100 sampled answers",
+      "text": "Lab 3.3 · steps 2 and 3, from the course's run The grader fails 29 of 100 sampled answers 0.29 raw failure rate, 95% interval 0.21 to 0.39 Some failures are good answers with a polite closing sentence the grader cannot find in the manual. Some passes are bad: the right words with a wrong number.",
+      "href": "../slides/day3.html#raw-rate"
+    },
+    {
+      "deck": "day3",
+      "id": "rogan-gladen",
+      "n": 27,
+      "session": 3,
+      "title": "Correct the raw rate with the grader's sensitivity and specificity",
+      "text": "Lab 3.3 · step 4 Correct the raw rate with the grader's sensitivity and specificity true = (raw + sp - 1) / (se + sp - 1) = (0.29 + 0.817 - 1) / (0.90 + 0.817 - 1) = 0.15 On 150 labelled traces value sensitivity: bad answers failed 0.90 specificity: good answers passed 0.82 corrected failure rate 0.15 true rate in the sample 0.17",
+      "href": "../slides/day3.html#rogan-gladen"
+    },
+    {
+      "deck": "day3",
+      "id": "review-queue",
+      "n": 28,
+      "session": 3,
+      "title": "Every failure and one pass in ten go to the reviewers' queue",
+      "text": "Routing Every failure and one pass in ten go to the reviewers' queue 32 traces for review from a sample of 100 Failures: confirm or overturn; each overturn is a calibration label. Random passes: what the grader lets through. Each review returns to the calibration set, so the grader's numbers stay current.",
+      "href": "../slides/day3.html#review-queue"
+    },
+    {
+      "deck": "day3",
+      "id": "retention",
+      "n": 29,
+      "session": 3,
+      "title": "Keep traces for a stated time, longer only while a reviewer needs them",
+      "text": "Stretch · retention Keep traces for a stated time, longer only while a reviewer needs them Wahaj's rule in the lab: redacted traces kept 3 days for debugging; those in the review queue held until reviewed. On day 7: 221 traces deleted, 179 kept, 32 of them held for review. PDPL Article 18: personal data is destroyed once it is no longer needed for its purpose.",
+      "href": "../slides/day3.html#retention"
+    },
+    {
+      "deck": "day3",
+      "id": "checkpoint-3",
+      "n": 30,
+      "session": 3,
+      "title": "A grader's rate",
+      "text": "Checkpoint A grader's rate The grader fails 29% of a sample. On labelled traces it fails 90% of bad answers and passes 82% of good ones. What do you report? 29% of Nabd's answers are wrong About 32%: the grader misses a tenth of the bad answers About 15% after correction, with the raw rate and the sample sizes Nothing until every trace is reviewed by hand",
+      "href": "../slides/day3.html#checkpoint-3"
+    },
+    {
+      "deck": "day3",
+      "id": "lab-3-3",
+      "n": 31,
+      "session": 3,
+      "title": "Online evaluation and a review queue",
+      "text": "Lab 3.3 · 25 min Online evaluation and a review queue Redact a week of Nabd traces, sample them, score them with the provided calibrated grader, correct the failure rate for the grader's error and route failures to review. D3_3_online_eval.ipynb Redact before storage 6 min Sample the week 4 min Grade with the calibrated grader 6 min Route to review and correct the rate 9 min ✱ Stretch: A retention rule that deletes traces past their limit",
+      "href": "../slides/day3.html#lab-3-3"
+    },
+    {
+      "deck": "day3",
+      "id": "s4",
+      "n": 32,
+      "session": 4,
+      "title": "Retraining and refresh policies",
+      "text": "Session 4 Retraining and refresh policies Write a trigger from drift or a schedule that waits for labels Estimate the cost of a retraining run Require human approval and log the decision 04",
+      "href": "../slides/day3.html#s4"
+    },
+    {
+      "deck": "day3",
+      "id": "retrain-script",
+      "n": 33,
+      "session": 4,
+      "title": "A script retrains on a fixed day each month, whatever the data says",
+      "text": "What Wahaj does today A script retrains on a fixed day each month, whatever the data says It trained challenger A on August's first cut of labels, before the Al-Jabal inspections. It would retrain on the load skew of day 12 if it ran then. It promotes without anyone reading the evidence. A policy says when to consider retraining, whether the data is ready, what it costs, and who approves.",
+      "href": "../slides/day3.html#retrain-script"
+    },
+    {
+      "deck": "day3",
+      "id": "trigger-and-labels",
+      "n": 34,
+      "session": 4,
+      "title": "A trigger proposes; complete labels and the triage decide",
+      "text": "Lab 3.4 · step 1, from the course's run A trigger proposes; complete labels and the triage decide Date Signal Decision Why 20 Sep drift: dust wait August labels complete on 2 October 14 Oct drift: load no skew: fix the data with its owner 3 Oct schedule retrain August labels complete 3 Nov schedule retrain September labels complete",
+      "href": "../slides/day3.html#trigger-and-labels"
+    },
+    {
+      "deck": "day3",
+      "id": "retrain-cost",
+      "n": 35,
+      "session": 4,
+      "title": "One retraining run costs 14 node-hours: about 6.3 riyals, of 25.8 left in the budget",
+      "text": "Lab 3.4 · step 2 One retraining run costs 14 node-hours: about 6.3 riyals, of 25.8 left in the budget 6.31 SAR extra node-hours on 3 October at the assumed price Compute is the small part here. The larger costs: the reviewer's hour, a worse model in one region, a rollback. For a fine-tuned language model the compute line can dominate: estimate before running.",
+      "href": "../slides/day3.html#retrain-cost"
+    },
+    {
+      "deck": "day3",
+      "id": "human-approval",
+      "n": 36,
+      "session": 4,
+      "title": "The pipeline trains and gates on its own; a person approves the promotion",
+      "text": "Lab 3.4 · step 3 The pipeline trains and gates on its own; a person approves the promotion retrain pipeline refused: the requester cannot approve its own request Saqer Al-Dossary refused: not an approver of fault-risk Lamya Al-Muqbil approved, with the batch, the trigger, the cost and the gate result",
+      "href": "../slides/day3.html#human-approval"
+    },
+    {
+      "deck": "day3",
+      "id": "end-to-end",
+      "n": 37,
+      "session": 4,
+      "title": "August promotes v4; September stops at validation, before any training",
+      "text": "Lab 3.4 · step 4, from the course's run August promotes v4; September stops at validation, before any training 2026-08 load · validate · train · gate · approve · promote: v3 → v4 2026-09 load · validate: 36 duplicates, 807 loads out of range, 14 bad region codes AUC all Al-Sahil Al-Jabal champion v3 0.837 0.738 0.877 challenger v4 0.866 0.902 0.863",
+      "href": "../slides/day3.html#end-to-end"
+    },
+    {
+      "deck": "day3",
+      "id": "index-refresh-policy",
+      "n": 38,
+      "session": 4,
+      "title": "An index refresh needs a trigger, a ready evaluation, a cost and an approver too",
+      "text": "Stretch · the same policy for Nabd's index An index refresh needs a trigger, a ready evaluation, a cost and an approver too Trigger: the manuals' fingerprint changed (v3 to v4). Ready: every changed manual (MM-02, MM-11) has a case in the evaluation set. Then the gate of Lab 2.2, and Saqer approves for field operations.",
+      "href": "../slides/day3.html#index-refresh-policy"
+    },
+    {
+      "deck": "day3",
+      "id": "checkpoint-4",
+      "n": 39,
+      "session": 4,
+      "title": "A drift alert on the 20th",
+      "text": "Checkpoint A drift alert on the 20th On 20 September a drift alert fires on dust for August's feeders. August's labels are complete on 2 October; a first cut exists. What does the policy do? Retrain now on the first cut Ignore the alert: the schedule will retrain anyway Lower the champion's threshold until labels arrive Wait for the complete labels, then retrain and gate",
+      "href": "../slides/day3.html#checkpoint-4"
+    },
+    {
+      "deck": "day3",
+      "id": "lab-3-4",
+      "n": 40,
+      "session": 4,
+      "title": "A retraining trigger with a cost and an approval",
+      "text": "Lab 3.4 · 25 min A retraining trigger with a cost and an approval Write the retraining trigger with a cost estimate and a human approval, and test it end to end: the drifted batch promotes a new champion, the corrupt batch stops, both with registry lineage. D3_4_retraining_policy.ipynb Drift or schedule, and labels ready 6 min The cost estimate 5 min Human approval 5 min Test on the drifted and the corrupt batch 9 min ✱ Stretch: Treat the manuals index refresh as a release under the same policy",
+      "href": "../slides/day3.html#lab-3-4"
+    },
+    {
+      "deck": "day3",
+      "id": "day-3-recap",
+      "n": 41,
+      "session": 4,
+      "title": "Traces find the slow step, tuned monitors find real shifts, a calibrated sample measures quality, a policy decides retraining",
+      "text": "Day 3 recap Traces find the slow step, tuned monitors find real shifts, a calibrated sample measures quality, a policy decides retraining Traces 338 → 82 ms Monitors 51 → 2 alerts Online evaluation 0.29 raw, 0.15 corrected Retraining labels, cost, approval",
+      "href": "../slides/day3.html#day-3-recap"
+    },
+    {
+      "deck": "day3",
+      "id": "tomorrow-agents",
+      "n": 42,
+      "session": 4,
+      "title": "Operate agents: one versioned bundle, durable state, a replayed incident and a kill switch",
+      "text": "Tomorrow · Day 4 Operate agents: one versioned bundle, durable state, a replayed incident and a kill switch Tomorrow Mubadir closes a ticket on stale data, creates duplicates after a crash and loops on a pending outage. You replay, fix and stop it.",
+      "href": "../slides/day3.html#tomorrow-agents"
+    },
+    {
+      "deck": "day4",
+      "id": "title",
+      "n": 1,
+      "session": 0,
+      "title": "Operate agents",
+      "text": "SDAIA Academy · Operating Machine Learning and Language Model Systems Operate agents Day 4: The agent as a versioned bundle, durable and idempotent, replayed when it fails and stopped when it runs away AI Engineering Track4 teaching days + capstone day4 sessions · 4 labsAE-305",
+      "href": "../slides/day4.html#title"
+    },
+    {
+      "deck": "day4",
+      "id": "agenda",
+      "n": 2,
+      "session": 0,
+      "title": "Operate agents",
+      "text": "Today Operate agents Session 1 · An agent is a bundle Prompt, tools, harness settings and sandbox policy are versioned together, apart from the session log Session 2 · Durable execution and safe retries Checkpoints let a crashed run resume; idempotency keys make a retry safe Session 3 · Replay to reproduce incidents Recorded model and tool responses make an incident reproducible and turn it into a regression case Session 4 · Budgets, gateways and kill switches Step and spend limits at the gateway, a kill switch per agent version, and sessions that survive the stop",
+      "href": "../slides/day4.html#agenda"
+    },
+    {
+      "deck": "day4",
+      "id": "review-day-3",
+      "n": 3,
+      "session": 0,
+      "title": "Which alarm should stay?",
+      "text": "Review of Day 3 Which alarm should stay? Three input alerts fired last week: dust high for one day, load 10% higher every day since Tuesday's meter recalibration, temperature slowly falling over a month. Which one needs action today? Dust, because its PSI was the largest Temperature, because it moved for a month Load: a step since a known change, likely skew, so call the data owner None: inputs do not matter until labels arrive",
+      "href": "../slides/day4.html#review-day-3"
+    },
+    {
+      "deck": "day4",
+      "id": "s1",
+      "n": 4,
+      "session": 1,
+      "title": "An agent is a bundle",
+      "text": "Session 1 An agent is a bundle Separate the session log, the harness and the sandbox Version an agent as one bundle with a content hash Run the agent only from a released bundle 01",
+      "href": "../slides/day4.html#s1"
+    },
+    {
+      "deck": "day4",
+      "id": "meet-mubadir",
+      "n": 5,
+      "session": 1,
+      "title": "Mubadir is a model in a loop that reads a report, calls tools and writes tickets",
+      "text": "The agent Mubadir is a model in a loop that reads a report, calls tools and writes tickets Report \"no power, account ACC-…\" → find_customer feeder, region → get_outage active, restored, pending, none → Write link, open a ticket and notify, or close Each turn the model returns one JSON action; the harness runs it through the services and logs every event.",
+      "href": "../slides/day4.html#meet-mubadir"
+    },
+    {
+      "deck": "day4",
+      "id": "harness-sandbox-log",
+      "n": 6,
+      "session": 1,
+      "title": "The harness runs the loop, the sandbox limits it, the session log records it",
+      "text": "Three things people mix up The harness runs the loop, the sandbox limits it, the session log records it Harness Steps, retries, timeouts, guards: harness.yaml and its code. Sandbox Allowed tools, readable fields, no network: sandbox.yaml. Session log What one session did. Produced by a run, never released.",
+      "href": "../slides/day4.html#harness-sandbox-log"
+    },
+    {
+      "deck": "day4",
+      "id": "bundle-version",
+      "n": 7,
+      "session": 1,
+      "title": "Four files, one content version: the bundle",
+      "text": "Lab 4.1 · step 2 Four files, one content version: the bundle {\"version\": \"mubadir-13ba248db039\", \"files\": {\"harness.yaml\": \"58774e13…\", \"prompt.md\": \"21280ad4…\", \"sandbox.yaml\": \"30f31ccf…\", \"tools.json\": \"ad9380b7…\"}, \"released_by\": \"Dhafer Al-Hazzani\"} The version is a hash of the four file hashes, the same idea as Day 1's release manifest.",
+      "href": "../slides/day4.html#bundle-version"
+    },
+    {
+      "deck": "day4",
+      "id": "one-tool-schema",
+      "n": 8,
+      "session": 1,
+      "title": "Adding one property to one tool moves the version",
+      "text": "Lab 4.1 · step 3 Adding one property to one tool moves the version 13ba248 → fe28888 after adding customer_words to create_ticket Only tools.json differs between the manifests. The model now sees a different tool list: a behaviour change with no prompt edit. So it replays the regression suite before release (Session 3).",
+      "href": "../slides/day4.html#one-tool-schema"
+    },
+    {
+      "deck": "day4",
+      "id": "run-from-release",
+      "n": 9,
+      "session": 1,
+      "title": "Run from the released folder, and write the bundle version into every session log",
+      "text": "Lab 4.1 · step 4, from the course's run Run from the released folder, and write the bundle version into every session log find_customer ACC-40000137 → feeder F-2414, Al-Wadi get_outage F-2414 → none create_ticket → OT-31001 notify_crew OT-31001 → notified final I opened ticket OT-31001 for your feeder F-2414 and sent it to the duty crew. · bundle mubadir-13ba248db039",
+      "href": "../slides/day4.html#run-from-release"
+    },
+    {
+      "deck": "day4",
+      "id": "bundle-in-manifest",
+      "n": 10,
+      "session": 1,
+      "title": "The bundle version is Mubadir's line in the release manifest",
+      "text": "Closing the loop with Day 1 The bundle version is Mubadir's line in the release manifest System What names its release Fault-risk classifier registry version behind the champion alias, data snapshot, code hash Nabd release file: prompt, model, index fingerprint, tool schemas Mubadir bundle version: prompt, tools, harness, sandbox",
+      "href": "../slides/day4.html#bundle-in-manifest"
+    },
+    {
+      "deck": "day4",
+      "id": "checkpoint-1",
+      "n": 11,
+      "session": 1,
+      "title": "A setting, not a prompt",
+      "text": "Checkpoint A setting, not a prompt A developer raises Mubadir's max_steps from 10 to 30 in harness.yaml and says no release is needed because the prompt did not change. What do you answer? Agree: only the prompt changes what the agent does It is a new bundle version: harness settings change behaviour and cost It is enough to note it in the session log Only a sandbox change needs a release",
+      "href": "../slides/day4.html#checkpoint-1"
+    },
+    {
+      "deck": "day4",
+      "id": "lab-4-1",
+      "n": 12,
+      "session": 1,
+      "title": "Mubadir as one versioned bundle",
+      "text": "Lab 4.1 · 25 min Mubadir as one versioned bundle Package Mubadir's prompt, tool schemas, harness settings and sandbox policy as one bundle with a content version, change one tool and watch the version move, then run the agent from the bundle. D4_1_agent_bundle.ipynb What changes Mubadir's behaviour 5 min Build the bundle and its version 8 min Change one tool schema 6 min Run the agent from the bundle 6 min ✱ Stretch: Refuse to start when the running bundle is not the released one",
+      "href": "../slides/day4.html#lab-4-1"
+    },
+    {
+      "deck": "day4",
+      "id": "s2",
+      "n": 13,
+      "session": 2,
+      "title": "Durable execution and safe retries",
+      "text": "Session 2 Durable execution and safe retries Resume a crashed agent run from its last checkpoint Explain why a retry after a timeout can repeat a write Make a write tool idempotent with a key 02",
+      "href": "../slides/day4.html#s2"
+    },
+    {
+      "deck": "day4",
+      "id": "two-complaints",
+      "n": 14,
+      "session": 2,
+      "title": "A crew sent twice to one feeder, and a session that started again from the beginning",
+      "text": "What reached Dhafer this month A crew sent twice to one feeder, and a session that started again from the beginning Restart A deployment restarted the pod between creating the ticket and notifying the crew. The session started over and opened a second ticket. Retry The ticket service committed, then timed out. The harness retried and wrote again.",
+      "href": "../slides/day4.html#two-complaints"
+    },
+    {
+      "deck": "day4",
+      "id": "checkpointed-graph",
+      "n": 15,
+      "session": 2,
+      "title": "A checkpointer saves the state after every step, under a thread id",
+      "text": "Durable execution A checkpointer saves the state after every step, under a thread id g = StateGraph(Ticket) g.add_node(\"find_customer\", find_customer) # ... get_outage, create_ticket, notify_crew g.add_edge(START, \"find_customer\") graph = g.compile(checkpointer=SqliteSaver(sqlite3.connect(\"checkpoints.db\"))) graph.invoke({\"account\": \"ACC-40000137\"}, {\"configurable\": {\"thread_id\": \"S-4202\"}}) graph.invoke(None, {\"configurable\": {\"thread_id\": \"S-4202\"}}) # resume after a crash",
+      "href": "../slides/day4.html#checkpointed-graph"
+    },
+    {
+      "deck": "day4",
+      "id": "restart-vs-resume",
+      "n": 16,
+      "session": 2,
+      "title": "Restarting opened a second ticket; resuming ran only the missing step",
+      "text": "Lab 4.2 · step 2, from the course's run Restarting opened a second ticket; resuming ran only the missing step After the crash before notify_crew Tickets Notified restart from the beginning 2 OT-31001 no, OT-31002 yes resume the saved thread 1 OT-31001 yes On resume, the saved state's next step was notify_crew.",
+      "href": "../slides/day4.html#restart-vs-resume"
+    },
+    {
+      "deck": "day4",
+      "id": "timeout-is-not-failure",
+      "n": 17,
+      "session": 2,
+      "title": "A timeout does not say whether the write happened",
+      "text": "Lab 4.2 · step 3 A timeout does not say whether the write happened create_ticket the service commits OT-31001 timeout ticket service did not answer within 5 s retry create_ticket → OT-31002 notify_crew OT-31002 · OT-31001 is never notified",
+      "href": "../slides/day4.html#timeout-is-not-failure"
+    },
+    {
+      "deck": "day4",
+      "id": "idempotency-key",
+      "n": 18,
+      "session": 2,
+      "title": "An idempotency key names one intended write; a repeat returns the first result",
+      "text": "Lab 4.2 · step 4 An idempotency key names one intended write; a repeat returns the first result key = hash(session_id, \"create_ticket\", args) # same intent, same key, on every retry # a different report gets a different key timeout after the commit retry OT-31001, replayed: true tickets one, notified",
+      "href": "../slides/day4.html#idempotency-key"
+    },
+    {
+      "deck": "day4",
+      "id": "two-fixes",
+      "n": 19,
+      "session": 2,
+      "title": "Checkpoints protect the steps between calls; keys protect the call itself",
+      "text": "Which fix for which failure Checkpoints protect the steps between calls; keys protect the call itself Checkpoint The process dies between steps. Resume from the saved state; finished steps do not run again. Idempotency key The answer to one write is lost. Retry with the same key; the service does not write twice. Both, for every agent that writes. The capstone's agent incident is a duplicate write.",
+      "href": "../slides/day4.html#two-fixes"
+    },
+    {
+      "deck": "day4",
+      "id": "checkpoint-2",
+      "n": 20,
+      "session": 2,
+      "title": "Checkpointed, still duplicated",
+      "text": "Checkpoint Checkpointed, still duplicated Mubadir's flow now has a checkpointer. A ticket service timeout still produced two tickets for one report. Why? The checkpointer was not saving The ticket database lost the first ticket The retry ran inside one step, and the service had no key to recognise it The model asked for two tickets",
+      "href": "../slides/day4.html#checkpoint-2"
+    },
+    {
+      "deck": "day4",
+      "id": "lab-4-2",
+      "n": 21,
+      "session": 2,
+      "title": "Crash, resume, and no duplicate tickets",
+      "text": "Lab 4.2 · 25 min Crash, resume, and no duplicate tickets Run Mubadir's ticket flow as a checkpointed graph, crash it mid-task and resume, then reproduce the duplicate ticket a retry creates and fix the tool with an idempotency key. D4_2_durable_retries.ipynb The ticket graph with a checkpointer 6 min Crash mid-task and resume 6 min A retry after a timeout: two tickets 6 min An idempotency key: one ticket 7 min ✱ Stretch: Resume the session from a second process",
+      "href": "../slides/day4.html#lab-4-2"
+    },
+    {
+      "deck": "day4",
+      "id": "s3",
+      "n": 22,
+      "session": 3,
+      "title": "Replay to reproduce incidents",
+      "text": "Session 3 Replay to reproduce incidents Replay a recorded session deterministically Find the cause of an incident in the replayed trace Add the incident to the regression suite 03",
+      "href": "../slides/day4.html#s3"
+    },
+    {
+      "deck": "day4",
+      "id": "inc-0412",
+      "n": 23,
+      "session": 3,
+      "title": "Mubadir told a customer in Al-Jabal that power was back; it never was",
+      "text": "INC-0412 · invented for the course Mubadir told a customer in Al-Jabal that power was back; it never was CustomerSalam, my house has had no power for two hours. Account ACC-40005754. MubadirPower is restored on your feeder F-3350. If you are still without power, reply to this message. 40 minutes later The customer calls again. The control room confirms the outage never ended. The report had been closed.",
+      "href": "../slides/day4.html#inc-0412"
+    },
+    {
+      "deck": "day4",
+      "id": "read-the-trace",
+      "n": 24,
+      "session": 3,
+      "title": "Step 2 returned \"restored\", 140 minutes old, and the agent closed the report on it",
+      "text": "Lab 4.3 · step 1 Step 2 returned \"restored\", 140 minutes old, and the agent closed the report on it 1 find_customer → F-3350, Al-Jabal 2 get_outage → restored, ticket OT-30412, age 140 minutes 3 close_report → closed 4 final Power is restored on your feeder F-3350.",
+      "href": "../slides/day4.html#read-the-trace"
+    },
+    {
+      "deck": "day4",
+      "id": "replay-not-rerun",
+      "n": 25,
+      "session": 3,
+      "title": "Replay from the recording, not a rerun against today's services",
+      "text": "Lab 4.3 · step 2 Replay from the recording, not a rerun against today's services The recording holds every model output and every tool response. Replay feeds them back through today's harness code: no model, no services. The same wrong answer comes back every time. A rerun would not The replica has caught up and a hosted model can answer differently: the failure would hide.",
+      "href": "../slides/day4.html#replay-not-rerun"
+    },
+    {
+      "deck": "day4",
+      "id": "freshness-guard",
+      "n": 26,
+      "session": 3,
+      "title": "A guard in the harness blocks a close on a stale status",
+      "text": "Lab 4.3 · step 3 A guard in the harness blocks a close on a stale status def freshness_guard(action, history): if action[\"tool\"] != \"close_report\": return None last = latest get_outage result in history if last[\"status\"] != \"restored\": return \"not restored\" if last[\"age_minutes\"] > 15: return f\"status is {last['age_minutes']} minutes old: confirm with the control room\" Replayed with the guard: blocked at step 3, \"status is 140 minutes old (limit 15)\".",
+      "href": "../slides/day4.html#freshness-guard"
+    },
+    {
+      "deck": "day4",
+      "id": "regression-suite",
+      "n": 27,
+      "session": 3,
+      "title": "The incident becomes a sixth case; the fix keeps the other five passing",
+      "text": "Lab 4.3 · step 4, from the course's run The incident becomes a sixth case; the fix keeps the other five passing Case Without the guard With the guard new outage, known outage, record change, unknown account pass pass restored 6 minutes ago pass pass INC-0412: restored 140 minutes ago fail pass",
+      "href": "../slides/day4.html#regression-suite"
+    },
+    {
+      "deck": "day4",
+      "id": "suite-new-bundle",
+      "n": 28,
+      "session": 3,
+      "title": "A bundle without close_report changes exactly one case, as intended",
+      "text": "Stretch · the suite against a new bundle A bundle without close_report changes exactly one case, as intended The sandbox no longer allows close_report: closing goes to a person. Replayed suite: \"restored 6 minutes ago\" now fails, everything else passes. Update that case's expectation in the same change, with the reason.",
+      "href": "../slides/day4.html#suite-new-bundle"
+    },
+    {
+      "deck": "day4",
+      "id": "checkpoint-3",
+      "n": 29,
+      "session": 3,
+      "title": "Reproduce it",
+      "text": "Checkpoint Reproduce it The team wants to reproduce INC-0412 by sending the same customer report to Mubadir today. Why will that probably not show the failure? The replica has caught up and the model may answer differently: only the recording holds what happened The customer's account has been deleted The new guard will block it Agents never behave the same way twice",
+      "href": "../slides/day4.html#checkpoint-3"
+    },
+    {
+      "deck": "day4",
+      "id": "lab-4-3",
+      "n": 30,
+      "session": 3,
+      "title": "Replay incident INC-0412",
+      "text": "Lab 4.3 · 25 min Replay incident INC-0412 Replay the recorded session in which Mubadir told a customer that power was back while the outage was live, find the cause in the trace, fix the harness and add the case to the regression suite. D4_3_replay_incident.ipynb Read the recorded trace 5 min Replay it: the same wrong answer 7 min Fix the harness 7 min The new regression case and the suite 6 min ✱ Stretch: Replay the whole suite against a new bundle",
+      "href": "../slides/day4.html#lab-4-3"
+    },
+    {
+      "deck": "day4",
+      "id": "s4",
+      "n": 31,
+      "session": 4,
+      "title": "Budgets, gateways and kill switches",
+      "text": "Session 4 Budgets, gateways and kill switches Set step and spend limits at a gateway Stop a runaway agent with a kill switch Keep the stopped sessions and hand them to a person 04",
+      "href": "../slides/day4.html#s4"
+    },
+    {
+      "deck": "day4",
+      "id": "runaway-session",
+      "n": 32,
+      "session": 4,
+      "title": "The outage service answered \"pending\" and Mubadir asked again 79 times",
+      "text": "14 October The outage service answered \"pending\" and Mubadir asked again 79 times 80 calls · 0.169 SAR one session with no limits, from the course's run Input tokens per call grew from 127 to 3,609: each call resends the conversation. The cost of a loop grows with the square of its length. This is Day 2's expensive days for Mubadir.",
+      "href": "../slides/day4.html#runaway-session"
+    },
+    {
+      "deck": "day4",
+      "id": "gateway-policy",
+      "n": 33,
+      "session": 4,
+      "title": "Every model call passes the gateway, which checks steps, session spend and the day's budget",
+      "text": "Lab 4.4 · step 2 Every model call passes the gateway, which checks steps, session spend and the day's budget def policy(state): if state[\"session_steps\"] >= 12: return \"step limit\" if state[\"session_spend\"] >= 0.01: return \"session spend limit\" if state[\"day_spend\"] >= 2.90: return \"daily budget\" # 90 SAR / 31 days The same runaway session: stopped by the gateway after 12 calls, 0.0057 SAR.",
+      "href": "../slides/day4.html#gateway-policy"
+    },
+    {
+      "deck": "day4",
+      "id": "kill-switch",
+      "n": 34,
+      "session": 4,
+      "title": "After two sessions hit the step limit, one switch stopped the version",
+      "text": "Lab 4.4 · step 3, from the course's run After two sessions hit the step limit, one switch stopped the version S-4411 stopped: step limit, 12 calls S-4412 stopped: step limit, 12 calls kill switch mubadir-2026.10.2, by Dhafer Al-Hazzani S-4413 to S-4416 refused before the first call 24 model calls instead of 72: the switch saved 48.",
+      "href": "../slides/day4.html#kill-switch"
+    },
+    {
+      "deck": "day4",
+      "id": "sessions-kept",
+      "n": 35,
+      "session": 4,
+      "title": "Stopping the agent must not drop the customers it was serving",
+      "text": "Lab 4.4 · step 4 Stopping the agent must not drop the customers it was serving Every session is in the store with its messages and status. Six stopped sessions go to customer care with the account, steps, spend and last tool result. The same sessions can be replayed for the post-incident note. 6 of 6 stopped sessions handed over, none lost",
+      "href": "../slides/day4.html#sessions-kept"
+    },
+    {
+      "deck": "day4",
+      "id": "litellm-budgets",
+      "n": 36,
+      "session": 4,
+      "title": "LiteLLM puts budgets on keys, users and teams; one key per version makes the switch a deletion",
+      "text": "Stretch · the same limits in a proxy LiteLLM puts budgets on keys, users and teams; one key per version makes the switch a deletion {\"models\": [\"steady\"], \"max_budget\": 2.9, \"budget_duration\": \"1d\", \"metadata\": {\"agent\": \"mubadir\", \"version\": \"mubadir-2026.10.2\"}} Budgets need the proxy's database (PostgreSQL); rate limits answer HTTP 429. Per-session step limits stay in the harness and the gateway policy.",
+      "href": "../slides/day4.html#litellm-budgets"
+    },
+    {
+      "deck": "day4",
+      "id": "agent-runbook",
+      "n": 37,
+      "session": 4,
+      "title": "A runbook says how to detect, who decides, how to roll back and how to stop",
+      "text": "Runbooks · recap from AE-205, now for three systems A runbook says how to detect, who decides, how to roll back and how to stop System Detect Decide Roll back Stop Classifier contract report, drift alert, AUC by region Lamya move the champion alias back pause the retraining trigger Nabd canary analysis, online evaluation, spans Dhafer, with Saqer abort the rollout, redeploy the last digest pin the previous release Mubadir gateway stops, spend per resolved report Dhafer or Mutab release the previous bundle kill switch for the version, then the handover Written before the incident. Each cell names a signal or a command from this week's labs. The capstone's runbook has this shape.",
+      "href": "../slides/day4.html#agent-runbook"
+    },
+    {
+      "deck": "day4",
+      "id": "checkpoint-4",
+      "n": 38,
+      "session": 4,
+      "title": "Six sessions looping",
+      "text": "Checkpoint Six sessions looping Every session of Mubadir's new version loops on the same pending status. Each stops at the step limit. What does the duty engineer do? Nothing: the step limit already stops each session Stop all of Mubadir, every version Raise the step limit so sessions can finish Turn on the kill switch for that version and hand its sessions to people",
+      "href": "../slides/day4.html#checkpoint-4"
+    },
+    {
+      "deck": "day4",
+      "id": "lab-4-4",
+      "n": 39,
+      "session": 4,
+      "title": "Limits and a kill switch at the gateway",
+      "text": "Lab 4.4 · 25 min Limits and a kill switch at the gateway Let a runaway Mubadir session loop without limits, then set step and spend limits at the gateway, stop the agent version with the kill switch and hand its sessions to a person without losing them. D4_4_budgets_killswitch.ipynb The runaway session without limits 4 min Step and spend limits 8 min The kill switch 7 min Sessions kept and handed over 6 min ✱ Stretch: The same limits as a LiteLLM proxy configuration",
+      "href": "../slides/day4.html#lab-4-4"
+    },
+    {
+      "deck": "day4",
+      "id": "day-4-recap",
+      "n": 40,
+      "session": 4,
+      "title": "A bundle you can name, a run that survives a crash, an incident you can replay, an agent you can stop",
+      "text": "Day 4 recap A bundle you can name, a run that survives a crash, an incident you can replay, an agent you can stop Bundle four files, one version Durable checkpoint and key Replay guard and case Stop limits, switch, handover",
+      "href": "../slides/day4.html#day-4-recap"
+    },
+    {
+      "deck": "day4",
+      "id": "capstone-kickoff",
+      "n": 41,
+      "session": 4,
+      "title": "A release week at Wahaj: each event stopped, shipped or rolled back on evidence",
+      "text": "Capstone kickoff A release week at Wahaj: each event stopped, shipped or rolled back on evidence Monday and Tuesday The scheduled retrain meets the corrupt September batch, then the corrected re-delivery: valid, and does it pass the gate? Wednesday The provider updates Nabd's model: gate, canary, ship or roll back. Thursday A Mubadir incident: replay, fix, add the case, keep the sessions. The events, their data and a starter are in labs/capstone/. Submit a public repository with the pipeline logs, the release log, the runbook and timestamped traces.",
+      "href": "../slides/day4.html#capstone-kickoff"
+    },
+    {
+      "deck": "day4",
+      "id": "tomorrow-capstone",
+      "n": 42,
+      "session": 4,
+      "title": "Capstone: defend your release week for eight minutes",
+      "text": "Tomorrow · Day 5 Capstone: defend your release week for eight minutes Show the release log and the runbook, then diagnose one fault the assessor injects, live, from your traces and logs.",
+      "href": "../slides/day4.html#tomorrow-capstone"
+    },
+    {
+      "deck": "capstone",
+      "id": "title",
+      "n": 1,
+      "session": 0,
+      "title": "Capstone: a release week and its defence",
+      "text": "SDAIA Academy · Operating Machine Learning and Language Model Systems Capstone: a release week and its defence Capstone: Eight minutes per participant: the release log, the runbook and one injected fault diagnosed live; questions are inside the eight minutes AI Engineering Track4 teaching days + capstone day8 min talk and demoAE-305",
+      "href": "../slides/capstone.html#title"
+    },
+    {
+      "deck": "capstone",
+      "id": "agenda",
+      "n": 2,
+      "session": 0,
+      "title": "How the presentations run",
+      "text": "Capstone How the presentations run Expectations and final prep the rubric, a last rehearsal, then the first presentations Presentations eight minutes each, questions included Review and closing peer feedback, the trainer's review, what next",
+      "href": "../slides/capstone.html#agenda"
+    },
+    {
+      "deck": "capstone",
+      "id": "rubric",
+      "n": 3,
+      "session": 0,
+      "title": "The rubric",
+      "text": "How presentations are scored The rubric Pipelines and gates 25% Delivery and rollback 20% Observability 20% Agent operations 20% Runbook and reproducibility 15% Show results from at least two measured runs. A claim without a number is a plan, not a result.",
+      "href": "../slides/capstone.html#rubric"
+    },
+    {
+      "deck": "capstone",
+      "id": "format",
+      "n": 4,
+      "session": 0,
+      "title": "8 minutes for each defence, questions included",
+      "text": "Format 8 minutes for each defence, questions included 1 · The release log · 2 min Each decision of the week, the metric it was taken on, the evidence file. 2 · The injected fault · 5 min Find it from traces and logs, say what you would do and who decides, do the first step. 3 · The runbook · 1 min What this week would change in it. Peer feedback. After each defence, everyone writes one strength, one question and one suggestion.",
+      "href": "../slides/capstone.html#format"
+    },
+    {
+      "deck": "capstone",
+      "id": "release-week",
+      "n": 5,
+      "session": 0,
+      "title": "Four events, four decisions, each on a stated metric",
+      "text": "What every repository shows Four events, four decisions, each on a stated metric Day Event The reference run decided Monday scheduled retrain on the corrupt September batch stopped at validation: duplicates, Al-Hadba load as fractions, bad region codes Tuesday the corrected re-delivery gate rejects: Al-Hadba 0.037 below the champion, tolerance 0.03 Wednesday the provider's new snapshot for Nabd shipped: offline gate, then 5%, 25% and 50% passed Thursday INC-0419, two tickets for one report open until the participant's fix gives one ticket",
+      "href": "../slides/capstone.html#release-week"
+    },
+    {
+      "deck": "capstone",
+      "id": "running-order",
+      "n": 6,
+      "session": 0,
+      "title": "Who presents when",
+      "text": "Running order Who presents when # Presenter Project 1 2 3 4 5 6 7 8",
+      "href": "../slides/capstone.html#running-order"
+    },
+    {
+      "deck": "capstone",
+      "id": "final-prep",
+      "n": 7,
+      "session": 0,
+      "title": "Final prep · 20 minutes",
+      "text": "Before the first presentation Final prep · 20 minutes Rehearse once, record a backup, try the demo on this screen.",
+      "href": "../slides/capstone.html#final-prep"
+    },
+    {
+      "deck": "capstone",
+      "id": "now-presenting",
+      "n": 8,
+      "session": 0,
+      "title": "Talk and demo",
+      "text": "Now presenting Talk and demo",
+      "href": "../slides/capstone.html#now-presenting"
+    },
+    {
+      "deck": "capstone",
+      "id": "review",
+      "n": 9,
+      "session": 0,
+      "title": "What the presentations showed",
+      "text": "Trainer review What the presentations showed Strongest patterns What several projects got right. Common gaps What most projects would fix next. One surprise Something nobody expected.",
+      "href": "../slides/capstone.html#review"
+    },
+    {
+      "deck": "capstone",
+      "id": "what-next",
+      "n": 10,
+      "session": 0,
+      "title": "Keep going",
+      "text": "After the course Keep going Your project stays yours: keep it reproducible and add the next improvement you named today The follow-up task, within 30 days: write a release manifest and one gate for a system you run, and send the evidence Next Academy course: AE-404 Harness Engineering for Long-Running and Multi-Agent Systems",
+      "href": "../slides/capstone.html#what-next"
+    },
+    {
+      "deck": "capstone",
+      "id": "thanks",
+      "n": 11,
+      "session": 0,
+      "title": "Thank you",
+      "text": "SDAIA Academy Thank you Operating Machine Learning and Language Model Systems",
+      "href": "../slides/capstone.html#thanks"
+    }
+  ]
+}

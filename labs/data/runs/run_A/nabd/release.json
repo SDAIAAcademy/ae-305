@@ -1,0 +1,9 @@
+{
+ "release": "nabd-2026.10.1",
+ "model": "hosted/steady-latest",
+ "index": "v3",
+ "retrieval": {
+  "k": 3
+ },
+ "temperature": 0
+}

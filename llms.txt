@@ -1,0 +1,47 @@
+# Operating Machine Learning and Language Model Systems
+
+> Run models, assistants and agents in production as versioned releases that are gated, observed and safe to roll back. SDAIA Academy course AE-305, version 2027.1.0, in English.
+
+Each slide is a heading such as "#### [day1#slide-id] Title": cite slides by that id, and each citation is a link (slides/day1.html#slide-id). These files are what a trainee sees: no speaker notes and no answer keys.
+
+## Course
+
+- [Course page](https://sdaiaacademy.github.io/ae-305/index.md): overview, outcomes, schedule and labs; the page itself is https://sdaiaacademy.github.io/ae-305/index.html
+- [The whole course](https://sdaiaacademy.github.io/ae-305/llms-full.txt): every unit, session and slide in one file, about 20,597 tokens
+- [Practice questions](https://sdaiaacademy.github.io/ae-305/practice.html): questions to check yourself, with feedback after each answer
+
+## Slides
+
+- [Day 1: Version and build](https://sdaiaacademy.github.io/ae-305/slides/day1.md): One release unit, a reproducible model, a pipeline that stops on bad data, and a gate by region; sessions: What changes behaviour, Registries and lineage, Pipelines with validation, Promotion gates; page: https://sdaiaacademy.github.io/ae-305/slides/day1.html; about 5,207 tokens
+- [Day 2: Deliver](https://sdaiaacademy.github.io/ae-305/slides/day2.md): The same artefact from merge to production, language model changes through a gate, a canary that rolls back, and the cost of each outcome; sessions: Continuous delivery for models, Language model releases, Shadow and canary on evidence, Cost and capacity signals; page: https://sdaiaacademy.github.io/ae-305/slides/day2.html; about 4,714 tokens
+- [Day 3: Observe](https://sdaiaacademy.github.io/ae-305/slides/day3.md): Spans for every step, drift monitors that do not cry wolf, online evaluation with a review queue, and a retraining policy; sessions: Tracing requests end to end, Drift, skew and delayed labels, Online evaluation and review queues, Retraining and refresh policies; page: https://sdaiaacademy.github.io/ae-305/slides/day3.html; about 4,592 tokens
+- [Day 4: Operate agents](https://sdaiaacademy.github.io/ae-305/slides/day4.md): The agent as a versioned bundle, durable and idempotent, replayed when it fails and stopped when it runs away; sessions: An agent is a bundle, Durable execution and safe retries, Replay to reproduce incidents, Budgets, gateways and kill switches; page: https://sdaiaacademy.github.io/ae-305/slides/day4.html; about 4,611 tokens
+- [Capstone: Capstone: a release week and its defence](https://sdaiaacademy.github.io/ae-305/slides/capstone.md): Eight minutes per participant: the release log, the runbook and one injected fault diagnosed live; questions are inside the eight minutes; page: https://sdaiaacademy.github.io/ae-305/slides/capstone.html; about 941 tokens
+
+## Labs
+
+- [Lab 1.1: A release manifest and the unrecorded change](https://sdaiaacademy.github.io/ae-305/labs/D1_1_release_manifest.ipynb): Day 1, Session 1, 25 min
+- [Lab 1.2: Reproduce a model from the registry](https://sdaiaacademy.github.io/ae-305/labs/D1_2_registry_lineage.ipynb): Day 1, Session 2, 25 min
+- [Lab 1.3: A validation step that stops training](https://sdaiaacademy.github.io/ae-305/labs/D1_3_validation_step.ipynb): Day 1, Session 3, 25 min
+- [Lab 1.4: Champion, challenger and the regional gate](https://sdaiaacademy.github.io/ae-305/labs/D1_4_promotion_gate.ipynb): Day 1, Session 4, 25 min
+- [Lab 2.1: Merge to staging to production](https://sdaiaacademy.github.io/ae-305/labs/D2_1_delivery_pipeline.ipynb): Day 2, Session 1, 25 min
+- [Lab 2.2: Three changes through the evaluation gate](https://sdaiaacademy.github.io/ae-305/labs/D2_2_llm_release_gate.ipynb): Day 2, Session 2, 25 min
+- [Lab 2.3: A canary that rolls itself back](https://sdaiaacademy.github.io/ae-305/labs/D2_3_canary_rollback.ipynb): Day 2, Session 3, 25 min
+- [Lab 2.4: Cost per successful outcome](https://sdaiaacademy.github.io/ae-305/labs/D2_4_cost_signals.ipynb): Day 2, Session 4, 25 min
+- [Lab 3.1: Spans for Nabd and the slowest step](https://sdaiaacademy.github.io/ae-305/labs/D3_1_tracing.ipynb): Day 3, Session 1, 25 min
+- [Lab 3.2: Two shifts in a replayed month](https://sdaiaacademy.github.io/ae-305/labs/D3_2_drift_monitors.ipynb): Day 3, Session 2, 25 min
+- [Lab 3.3: Online evaluation and a review queue](https://sdaiaacademy.github.io/ae-305/labs/D3_3_online_eval.ipynb): Day 3, Session 3, 25 min
+- [Lab 3.4: A retraining trigger with a cost and an approval](https://sdaiaacademy.github.io/ae-305/labs/D3_4_retraining_policy.ipynb): Day 3, Session 4, 25 min
+- [Lab 4.1: Mubadir as one versioned bundle](https://sdaiaacademy.github.io/ae-305/labs/D4_1_agent_bundle.ipynb): Day 4, Session 1, 25 min
+- [Lab 4.2: Crash, resume, and no duplicate tickets](https://sdaiaacademy.github.io/ae-305/labs/D4_2_durable_retries.ipynb): Day 4, Session 2, 25 min
+- [Lab 4.3: Replay incident INC-0412](https://sdaiaacademy.github.io/ae-305/labs/D4_3_replay_incident.ipynb): Day 4, Session 3, 25 min
+- [Lab 4.4: Limits and a kill switch at the gateway](https://sdaiaacademy.github.io/ae-305/labs/D4_4_budgets_killswitch.ipynb): Day 4, Session 4, 25 min
+
+## Context files
+
+- [context/course.md](https://sdaiaacademy.github.io/ae-305/context/course.md): the whole course, for an assistant that takes a file, about 20,597 tokens
+- [context/day1.md](https://sdaiaacademy.github.io/ae-305/context/day1.md): Day 1, about 5,207 tokens
+- [context/day2.md](https://sdaiaacademy.github.io/ae-305/context/day2.md): Day 2, about 4,714 tokens
+- [context/day3.md](https://sdaiaacademy.github.io/ae-305/context/day3.md): Day 3, about 4,592 tokens
+- [context/day4.md](https://sdaiaacademy.github.io/ae-305/context/day4.md): Day 4, about 4,611 tokens
+- [context/capstone.md](https://sdaiaacademy.github.io/ae-305/context/capstone.md): Capstone, about 941 tokens

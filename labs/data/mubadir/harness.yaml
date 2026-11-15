@@ -1,0 +1,7 @@
+agent: mubadir
+model: steady
+temperature: 0
+max_steps: 10
+tool_timeout_s: 5
+retries_on_timeout: 2
+session_log: sqlite

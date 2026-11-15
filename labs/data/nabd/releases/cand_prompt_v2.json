@@ -1,0 +1,13 @@
+{
+ "system": "nabd",
+ "prompt": "prompt_v2.txt",
+ "model": "steady",
+ "index": "v3",
+ "tools": "tools.json",
+ "retrieval": {
+  "k": 3
+ },
+ "temperature": 0,
+ "release": "nabd-2026.11.1",
+ "change": "prompt edit: always cite manual and section"
+}

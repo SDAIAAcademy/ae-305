@@ -1,0 +1,5 @@
+network_egress: none
+allowed_tools: [find_customer, get_outage, create_ticket, notify_crew, close_report, update_customer_record]
+needs_approval: [update_customer_record]
+readable_fields: [account, feeder_id, region, life_support]
+hidden_fields: [name, phone]

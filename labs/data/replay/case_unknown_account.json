@@ -1,0 +1,44 @@
+{
+ "synthetic": true,
+ "case": "case_unknown_account",
+ "session_id": "S-905",
+ "status": "done",
+ "final": "I cannot find the account ACC-99999999. Please check the number on your bill.",
+ "events": [
+  {
+   "type": "report",
+   "text": "No power here. Account ACC-99999999."
+  },
+  {
+   "type": "model",
+   "step": 1,
+   "content": "{\"tool\": \"find_customer\", \"args\": {\"account\": \"ACC-99999999\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 125,
+    "output_tokens": 15
+   }
+  },
+  {
+   "type": "tool",
+   "step": 1,
+   "tool": "find_customer",
+   "args": {
+    "account": "ACC-99999999"
+   },
+   "result": {
+    "error": "no customer with account ACC-99999999"
+   }
+  },
+  {
+   "type": "model",
+   "step": 2,
+   "content": "{\"final\": \"I cannot find the account ACC-99999999. Please check the number on your bill.\"}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 165,
+    "output_tokens": 22
+   }
+  }
+ ]
+}

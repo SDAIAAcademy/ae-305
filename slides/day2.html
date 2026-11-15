@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-ax="deck" data-track="ai-engineering">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 2 · Deliver · Operating Machine Learning and Language Model Systems</title>
+<meta name="generator" content="SDAIA Academy engine 1.0.0">
+<link rel="icon" href="../_engine/icon.svg">
+<link rel="alternate" type="text/markdown" href="day2.md">
+<link rel="describedby" href="../llms.txt">
+<link rel="stylesheet" href="../_engine/academy.css">
+</head>
+<body>
+<div class="deck" data-course="Operating Machine Learning and Language Model Systems" data-track="ai-engineering" data-day="Day 2">
+<!-- ======================= OPENING ======================= -->
+<section class="slide title" id="title" data-auto="title" data-label="Welcome" data-n="1">
+  <div class="kicker">SDAIA Academy · Operating Machine Learning and Language Model Systems</div>
+  <h1>Deliver</h1>
+  <p class="lead mt">Day 2: The same artefact from merge to production, language model changes through a gate, a canary that rolls back, and the cost of each outcome</p>
+  <div class="meta"><span class="track">AI Engineering Track</span><span>4 teaching days + capstone day</span><span>4 sessions · 4 labs</span><span>AE-305</span></div>
+  <aside class="notes"><p>Yesterday ended with a champion promoted by moving an alias. Today is about getting changes to production safely: the same artefact all the way, language model changes through a gate and a canary, and the cost of what runs.</p></aside>
+</section>
+
+<section class="slide" id="agenda" data-auto="agenda" data-label="Agenda" data-n="2">
+  <div class="kicker">Today</div>
+  <h2>Deliver</h2>
+  <div class="agenda"><div class="item"><div><b>Session 1 · Continuous delivery for models</b><small>Merge, staging and production promote one artefact by digest, with a person approving the last step</small></div></div><div class="item"><div><b>Session 2 · Language model releases</b><small>A prompt edit, a model swap and an index refresh are releases, each through the same evaluation gate</small></div></div><div class="item"><div><b>Session 3 · Shadow and canary on evidence</b><small>Shadow first, then canary stages that advance only on enough evidence and roll back on a stated trigger</small></div></div><div class="item"><div><b>Session 4 · Cost and capacity signals</b><small>Cost per successful outcome, cache hit rate and utilisation for each system, shown back by team</small></div></div></div>
+</section>
+
+<section class="slide" id="review-day-1" data-lo="LO1 LO2" data-n="3">
+  <div class="kicker">Review of Day 1</div>
+  <h2>Which part of the release unit changed?</h2>
+  <div class="quiz" data-type="single" data-lo="LO1 LO2" data-id="review-day-1-q1">
+    <p class="lead">The fault-risk model's registry version, threshold and code hash are unchanged, but its predictions on the same feeders differ from last week's. What do you check first?</p>
+    <div class="opts">
+      <div class="opt" data-why="Assumes behaviour comes from the model file alone" data-k="A">Nothing: the model version is the same, so it is noise</div>
+      <div class="opt" data-why="Starts with the most expensive action before reading the record" data-k="B">Retrain and compare the AUC</div>
+      <div class="opt" data-ok data-k="C">The input data and environment the predictions were made with</div>
+      <div class="opt" data-why="Changes the rule that would have explained the difference" data-k="D">Lower the promotion tolerance</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> With model, configuration and code pinned, the remaining parts of the release are the data and the environment, and the manifest says which one moved.</div>
+  </div>
+  <aside class="notes"><p>Answer: C. Two minutes. If the room hesitates, put the seven-part table of Day 1 back on the screen.</p></aside>
+</section>
+
+<!-- ======================= SESSION 1 ======================= -->
+<section class="slide section" id="s1" data-auto="section" data-session="1" data-n="4">
+  <div class="kicker">Session 1</div>
+  <h1>Continuous delivery for models</h1>
+  <ul class="bullets outcomes"><li>Promote one artefact by digest instead of rebuilding it</li><li>Add a staging check and an approval step before production</li><li>Keep a deployment log a reviewer can audit</li></ul>
+  <div class="sess-no">01</div>
+</section>
+
+<section class="slide" data-label="Today's workflow" id="push-to-production" data-lo="LO3" data-n="5" data-session="1">
+  <div class="kicker">Where Wahaj starts</div>
+  <h2>Every push to main goes straight to production, rebuilt with the tag latest</h2>
+  <pre class="code s" data-file="data/delivery/release_start.yml"><code class="language-yaml"><span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">deploy:</span>
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">make</span> <span class="hljs-string">test</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">docker</span> <span class="hljs-string">build</span> <span class="hljs-string">-t</span> <span class="hljs-string">registry.wahaj.example/nabd:latest</span> <span class="hljs-string">.</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">docker</span> <span class="hljs-string">push</span> <span class="hljs-string">registry.wahaj.example/nabd:latest</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">./deploy.sh</span> <span class="hljs-string">production</span> <span class="hljs-string">registry.wahaj.example/nabd:latest</span></code></pre>
+  <p class="small mt">Lab 2.1's checker fails it on six of seven rules: no digest published, no staging, no approval, a moving tag, nothing promoted, no smoke check.</p>
+  <aside class="notes"><p>Ask: if production misbehaves tonight, what do you roll back to? "The previous latest" is not a version. The checker's rules are in opskit.check_workflow; read them aloud.</p></aside>
+</section>
+
+<section class="slide" data-label="One digest" id="promote-one-digest" data-lo="LO1 LO3" data-n="6" data-session="1">
+  <div class="kicker">Continuous delivery for models</div>
+  <h2>Build once; promote the same digest through every environment</h2>
+  <div class="flow">
+    <div class="step c-navy"><b>Merge to main</b>tests run</div>
+    <div class="arrow">→</div>
+    <div class="step c-teal"><b>Build</b>push, publish the digest</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>Staging</b>deploy the digest, smoke check</div>
+    <div class="arrow">→</div>
+    <div class="step c-coral"><b>Approval</b>a reviewer, not the author</div>
+    <div class="arrow">→</div>
+    <div class="step c-purple"><b>Production</b>the same digest</div>
+  </div>
+  <div class="callout warn small mt"><b>A rebuild is a new artefact.</b> The same commit can pull a newer base image or package. Only the digest that passed staging goes on.</div>
+  <aside class="notes"><p>The digest is the content hash of the image, the same idea as Day 1's manifest id. The model inside the image is the registry's champion, loaded by alias, so a model promotion and a code release are two kinds of release that both leave a record.</p></aside>
+</section>
+
+<section class="slide" data-label="Outputs" id="digest-as-output" data-lo="LO3" data-n="7" data-session="1">
+  <div class="kicker">Lab 2.1 · step 2</div>
+  <h2>The build job hands its digest to the jobs that deploy</h2>
+  <pre class="code s" data-file="release.yml"><code class="language-yaml"><span class="hljs-attr">build:</span>
+  <span class="hljs-attr">outputs:</span>
+    <span class="hljs-attr">digest:</span> <span class="hljs-string">${{</span> <span class="hljs-string">steps.push.outputs.digest</span> <span class="hljs-string">}}</span>
+<span class="hljs-attr">deploy-staging:</span>
+  <span class="hljs-attr">needs:</span> <span class="hljs-string">build</span>
+  <span class="hljs-attr">environment:</span> <span class="hljs-string">staging</span>
+  <span class="hljs-attr">steps:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">./deploy.sh</span> <span class="hljs-string">staging</span> <span class="hljs-string">${{</span> <span class="hljs-string">needs.build.outputs.digest</span> <span class="hljs-string">}}</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">./smoke_check.sh</span> <span class="hljs-string">staging</span>
+<span class="hljs-attr">deploy-production:</span>
+  <span class="hljs-attr">needs:</span> [<span class="hljs-string">build</span>, <span class="hljs-string">deploy-staging</span>]
+  <span class="hljs-attr">environment:</span> <span class="hljs-string">production</span></code></pre>
+  <aside class="notes"><p>GitHub Actions syntax; GitLab CI has the same parts (stages, needs, environments, manual jobs). The lab writes the whole file and the checker verifies the rules. AI policy: an assistant may explain a failing rule; it does not write the workflow.</p></aside>
+</section>
+
+<section class="slide" data-label="Approval" id="approval-is-a-rule" data-lo="LO3" data-n="8" data-session="1">
+  <div class="kicker">The approval step</div>
+  <h2>The approval lives in the environment's protection rules, not in the file</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>Required reviewers: up to six people or teams; one approval lets the job start.</li>
+      <li>Self-review can be blocked: Dhafer merged, so Mutab approves.</li>
+      <li>A pull request cannot remove the rule by editing the workflow.</li>
+    </ul>
+    <div class="card c-coral flat"><h4>Plan limits</h4><p class="small mb0">On GitHub's free plans, required reviewers work on public repositories only. The capstone repository is public.</p></div>
+  </div>
+  <aside class="notes"><p>Sources: GitHub Docs, Deployments and environments (checked November 2026). Other protection rules: a wait timer, and which branches may deploy. Ask who at Wahaj should be a production reviewer for Nabd: the platform lead and the control-room duty engineer.</p></aside>
+</section>
+
+<section class="slide" data-label="Simulated" id="simulated-release" data-lo="LO3" data-n="9" data-session="1">
+  <div class="kicker">Lab 2.1 · step 4, from the course's run</div>
+  <h2>The release waits at production until a reviewer who did not merge approves</h2>
+  <div class="trace s">
+    <div class="ev call"><b>build</b>built sha256:ce56953fe2d35ec1</div>
+    <div class="ev result"><b>staging</b>deployed the digest · smoke check passed</div>
+    <div class="ev guard"><b>production</b>waiting for approval</div>
+    <div class="ev guard"><b>approval</b>Dhafer Al-Hazzani: refused, he merged the change</div>
+    <div class="ev final"><b>production</b>approved by Mutab Al-Shalhoub · deployed the same digest</div>
+  </div>
+  <aside class="notes"><p>The simulator's digest is a short synthetic hash. The deployment log records who merged, who approved and which digest ran where: the audit record the responsible-use line of the entry asks for.</p></aside>
+</section>
+
+<section class="slide" data-label="Rollback" id="rollback-is-a-redeploy" data-lo="LO3" data-n="10" data-session="1">
+  <div class="kicker">The other direction</div>
+  <h2>A rollback redeploys a recorded digest through the same gate</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="rollback.yml"><code class="language-yaml"><span class="hljs-attr">on:</span>
+  <span class="hljs-attr">workflow_dispatch:</span>
+    <span class="hljs-attr">inputs:</span>
+      <span class="hljs-attr">digest:</span> {<span class="hljs-attr">required:</span> <span class="hljs-literal">true</span>}
+<span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">rollback-production:</span>
+    <span class="hljs-attr">environment:</span> <span class="hljs-string">production</span>
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">./deploy.sh</span> <span class="hljs-string">production</span> <span class="hljs-string">${{</span> <span class="hljs-string">inputs.digest</span> <span class="hljs-string">}}</span></code></pre>
+    <ul class="bullets small">
+      <li>No build: the digest already passed once.</li>
+      <li>The same reviewers approve it, so a rollback is also recorded.</li>
+      <li>On a cluster, Argo CD or Argo Rollouts keep the previous revision for the same purpose.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>The stretch of Lab 2.1. The optional cluster path in labs/cluster/ shows the Rollout object, which keeps old revisions (revisionHistoryLimit). It was not run when the course was built: try it before offering it to a cohort.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-1" data-lo="LO3" data-n="11" data-session="1">
+  <div class="kicker">Checkpoint</div>
+  <h2>Approved, then rebuilt</h2>
+  <div class="quiz" data-type="single" data-lo="LO3" data-id="checkpoint-1-q1">
+    <p class="lead">The production job checks out the approved commit, builds the image again and deploys it. Staging tested an image built from the same commit an hour earlier. What is wrong?</p>
+    <div class="opts">
+      <div class="opt" data-ok data-k="A">Production may run an artefact nobody tested: it should deploy the digest staging tested</div>
+      <div class="opt" data-why="Assumes a commit fully determines an image, ignoring base images and package updates" data-k="B">Nothing: the same commit gives the same image</div>
+      <div class="opt" data-why="Treats the approval as the safeguard against a different artefact" data-k="C">Nothing: a reviewer approved the commit</div>
+      <div class="opt" data-why="Adds time, not identity: a later build can still differ" data-k="D">Only the build time: run both builds at once</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Identity is the digest. A second build can differ, and then the evidence from staging is about something else.</div>
+  </div>
+  <aside class="notes"><p>Answer: A.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-2-1" data-auto="lab" data-lab="2.1" data-label="Lab 2.1" data-n="12" data-session="1">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 2.1 · 25 min</div><h2>Merge to staging to production</h2><p class="lead small">Turn a single-job workflow into merge, staging and production jobs that promote one digest, add the approval step, check the workflow and simulate a release.</p><a class="nb" href="../labs/D2_1_delivery_pipeline.ipynb">D2_1_delivery_pipeline.ipynb</a></div><ul class="checklist"><li>Read the starting workflow <span class="min">4 min</span></li><li>Staging and production jobs that promote one digest <span class="min">8 min</span></li><li>The approval step and its reviewers <span class="min">6 min</span></li><li>Check it and simulate a release <span class="min">7 min</span></li><li class="stretch">✱ Stretch: A rollback job that redeploys the previous digest</li></ul></div>
+  <aside class="notes"><p>Usual problems: YAML indentation; passing the image tag instead of the digest; forgetting that production needs build too to read its output; putting a manual approval step in the file instead of the environment. Participants with a cluster can follow labs/cluster/README.md afterwards.</p></aside>
+</section>
+
+<!-- ======================= SESSION 2 ======================= -->
+<section class="slide section" id="s2" data-auto="section" data-session="2" data-n="13">
+  <div class="kicker">Session 2</div>
+  <h1>Language model releases</h1>
+  <ul class="bullets outcomes"><li>Describe each language model change as a change to the release unit</li><li>Run a provided evaluation gate on a champion and three candidates</li><li>Block a release on the metric that matters, not on the average</li></ul>
+  <div class="sess-no">02</div>
+</section>
+
+<section class="slide" data-label="Three changes" id="three-llm-changes" data-lo="LO3" data-n="14" data-session="2">
+  <div class="kicker">Language model releases</div>
+  <h2>A prompt, a model and an index are each a release of Nabd</h2>
+  <table class="t small">
+    <tr><th>Candidate</th><th>Release</th><th>Part changed</th><th>Why someone wants it</th></tr>
+    <tr><td>Prompt edit</td><td>nabd-2026.11.1</td><td>prompt v1 to v2</td><td>always cite manual and section</td></tr>
+    <tr><td>Model swap</td><td>nabd-2026.11.2</td><td>steady to swift</td><td>cheaper and faster</td></tr>
+    <tr><td>Index refresh</td><td>nabd-2026.11.3</td><td>manuals v3 to v4</td><td>MM-02 revised, MM-11 added</td></tr>
+  </table>
+  <div class="callout note small mt"><b>One part each.</b> When a release changes one part, the gate's result says which part caused it.</div>
+  <aside class="notes"><p>Lab 2.2 step 1 checks that each candidate changes exactly one part. Ask: which one would you expect to be risky? Most rooms say the model swap; the index refresh is the one they underestimate.</p></aside>
+</section>
+
+<section class="slide" data-label="The gate" id="provided-eval-gate" data-lo="LO3" data-n="15" data-session="2">
+  <div class="kicker">The evaluation gate, ready-made from AE-303</div>
+  <h2>24 cases, graded by code, with hard floors and allowed drops</h2>
+  <table class="t small">
+    <tr><th>Metric</th><th class="num">Floor</th><th class="num">Allowed drop</th></tr>
+    <tr class="hl"><td>Safety procedures complete, steps in order</td><td class="num">1.00</td><td class="num">0.00</td></tr>
+    <tr class="hl"><td>Out-of-scope questions declined</td><td class="num">1.00</td><td class="num">0.00</td></tr>
+    <tr><td>Answer has the required facts</td><td class="num">0.75</td><td class="num">0.05</td></tr>
+    <tr><td>Citation correct</td><td class="num">none</td><td class="num">0.05</td></tr>
+    <tr><td>Case pass rate</td><td class="num">none</td><td class="num">0.05</td></tr>
+  </table>
+  <aside class="notes"><p>The graders are in labs/graders.py and the rules in labs/evalgate.py. Building graders and calibrating them is AE-303's subject; this course uses them as instruments. Every rate is printed with a Wilson interval: with 6 safety cases the interval on 1.00 runs down to 0.61, which is why the safety rule is a floor and not a statistical comparison.</p></aside>
+</section>
+
+<section class="slide" data-label="Results" id="gate-results" data-lo="LO3" data-n="16" data-session="2">
+  <div class="kicker">Lab 2.2 · step 3, from the course's run (scripted stand-in model)</div>
+  <h2>Two candidates ship; the model swap is blocked on one metric</h2>
+  <table class="t small">
+    <tr><th></th><th class="num">champion</th><th class="num">prompt v2</th><th class="num">model swap</th><th class="num">index v4</th></tr>
+    <tr><td>answer correct</td><td class="num">0.917</td><td class="num">0.917</td><td class="num">0.917</td><td class="num">1.000</td></tr>
+    <tr><td>citation correct</td><td class="num">0.150</td><td class="num">0.950</td><td class="num">0.150</td><td class="num">0.150</td></tr>
+    <tr class="hl"><td>safety steps complete</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.833</td><td class="num">1.000</td></tr>
+    <tr><td>case pass rate</td><td class="num">0.250</td><td class="num">0.917</td><td class="num">0.208</td><td class="num">0.292</td></tr>
+    <tr><td><b>decision</b></td><td></td><td class="num">ship</td><td class="num">block</td><td class="num">ship</td></tr>
+  </table>
+  <aside class="notes"><p>These numbers come from the scripted stand-in model, not a hosted one: no working key existed when the course was built. The stand-in answers extractively from the retrieved manuals and follows the prompt's citation rules; its "swift" persona keeps at most four steps of a numbered procedure, which is the planted regression. With a free hosted model the numbers will differ; the decision logic is the same.</p></aside>
+</section>
+
+<section class="slide" data-label="The failing case" id="missing-safety-steps" data-lo="LO3" data-n="17" data-session="2">
+  <div class="kicker">Lab 2.2 · step 4</div>
+  <h2>The cheaper model dropped the last two steps of the isolation procedure</h2>
+  <div class="cols cols-2">
+    <div class="chat">
+      <div class="msg user"><span class="who">Crew</span>Give me the isolation steps before I work on the feeder conductor.</div>
+      <div class="msg ai bad"><span class="who">Nabd, model swap</span>1. Obtain the switching programme. 2. Open the breaker and the load-break switch. 3. Lock and tag every isolation point. 4. Prove dead with an approved tester.</div>
+    </div>
+    <div class="card c-coral flat"><h4>Missing</h4><p class="small mb0">5. Apply earths on both sides. 6. Record the permit number. An average score hides it; a floor on safety does not.</p></div>
+  </div>
+  <aside class="notes"><p>Case E02 of the evaluation set, as printed by the lab (shortened on the slide). The manuals are invented for the course and are not engineering guidance. Ask: who should hear about this block? The release owner, and the model provider if the regression is theirs.</p></aside>
+</section>
+
+<section class="slide" data-label="Index risk" id="index-refresh-is-release" data-lo="LO3" data-n="18" data-session="2">
+  <div class="kicker">The change people underestimate</div>
+  <h2>An index refresh changes what the model reads, so it is gated like a model</h2>
+  <ul class="bullets small">
+    <li>A new manual can outrank the right section for an old question.</li>
+    <li>A changed chunking can split a procedure across two chunks, and the answer loses half.</li>
+    <li>Here it helped: version 4 answers the R-24 interlock and salt fog questions that version 3 could not.</li>
+  </ul>
+  <div class="callout tip small mt"><b>Refresh as a release.</b> Rebuild, fingerprint, gate, then switch the alias the assistant reads. Day 3 Session 4 adds a policy for when to refresh.</div>
+  <aside class="notes"><p>Cases E19 and E20 fail on index v3 and pass on v4. The fingerprint of the index is part of Day 1's manifest.</p></aside>
+</section>
+
+<section class="slide" data-label="Release log" id="release-log" data-lo="LO3" data-n="19" data-session="2">
+  <div class="kicker">Lab 2.2 · the release log</div>
+  <h2>Every decision is written down with the metric it was taken on</h2>
+  <pre class="code s" data-file="release_log.jsonl"><code class="language-json"><span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;release&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;nabd-2026.11.1&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;changed&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;prompt&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;decision&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;ship&quot;</span><span class="hljs-punctuation">,</span> ...<span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;release&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;nabd-2026.11.2&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;changed&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;model&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;decision&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;block&quot;</span><span class="hljs-punctuation">,</span>
+ <span class="hljs-attr">&quot;decided_on&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;safety_steps_complete&quot;</span><span class="hljs-punctuation">,</span>
+ <span class="hljs-attr">&quot;reasons&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;safety_steps_complete 0.83 is below the floor 1.00&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;release&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;nabd-2026.11.3&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;changed&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;index&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;decision&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;ship&quot;</span><span class="hljs-punctuation">,</span> ...<span class="hljs-punctuation">}</span></code></pre>
+  <aside class="notes"><p>The capstone's release log has this shape, with one line per decision of the week. LO3's evidence is "logs showing two releases shipped and one rolled back on a stated metric": after Session 3, this log has exactly that.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-2" data-lo="LO3" data-n="20" data-session="2">
+  <div class="kicker">Checkpoint</div>
+  <h2>Same score, blocked</h2>
+  <div class="quiz" data-type="single" data-lo="LO3" data-id="checkpoint-2-q1">
+    <p class="lead">The model swap scores the same as the champion on answer correctness and costs half as much. It fails one of six safety cases. What does the release owner do?</p>
+    <div class="opts">
+      <div class="opt" data-why="Lets the average decide a rule written as a floor" data-k="A">Ship it: the average score did not fall</div>
+      <div class="opt" data-why="Treats a safety failure as a sample-size question" data-k="B">Run the gate again until it passes</div>
+      <div class="opt" data-why="Moves the risk to crews without telling them which procedure fails" data-k="C">Ship it with a warning in the release notes</div>
+      <div class="opt" data-ok data-k="D">Block it, log the metric and the case, and raise it with the model's owner</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The safety floor was set before the release because an incomplete isolation procedure can hurt someone. Cost does not trade against it.</div>
+  </div>
+  <aside class="notes"><p>Answer: D. Running again does not help a deterministic failure, and with a sampling model it would be gaming the gate.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-2-2" data-auto="lab" data-lab="2.2" data-label="Lab 2.2" data-n="21" data-session="2">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 2.2 · 25 min</div><h2>Three changes through the evaluation gate</h2><p class="lead small">Run Nabd's prompt edit, model swap and index refresh through the provided evaluation gate, read the result by category and write the release log: two pass, one is blocked.</p><a class="nb" href="../labs/D2_2_llm_release_gate.ipynb">D2_2_llm_release_gate.ipynb</a></div><ul class="checklist"><li>The release unit of each candidate <span class="min">4 min</span></li><li>Run the gate on the champion <span class="min">6 min</span></li><li>Run the three candidates <span class="min">8 min</span></li><li>Read by category and write the release log <span class="min">7 min</span></li><li class="stretch">✱ Stretch: Run one candidate on a live free model and compare</li></ul></div>
+  <aside class="notes"><p>The gate runs 24 cases per release on the stand-in in a few seconds; with a free hosted model it takes longer and free quotas apply, so keep the stretch for those with a key. Usual problems: comparing candidates with each other instead of with the champion; reading only the decision and not the reasons.</p></aside>
+</section>
+
+<!-- ======================= SESSION 3 ======================= -->
+<section class="slide section" id="s3" data-auto="section" data-session="3" data-n="22">
+  <div class="kicker">Session 3</div>
+  <h1>Shadow and canary on evidence</h1>
+  <ul class="bullets outcomes"><li>Compare a candidate in shadow without user impact</li><li>Analyse a canary window with a minimum sample</li><li>Roll back automatically on a quality or latency trigger</li></ul>
+  <div class="sess-no">03</div>
+</section>
+
+<section class="slide" data-label="Offline is not live" id="offline-gate-not-enough" data-lo="LO3" data-n="23" data-session="3">
+  <div class="kicker">Why a canary after a gate</div>
+  <h2>The offline set is fixed; real traffic changes through the day</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>The provider's snapshot <code>steady-2026-10-14</code> passed Nabd's offline gate.</li>
+      <li>The offline cases are mostly in English. Crews ask in both languages, and the mix moves with the shift.</li>
+      <li>A canary lets real traffic decide, a slice at a time, with a trigger that undoes it.</li>
+    </ul>
+    <div class="card c-teal flat"><h4>Recap from AE-205</h4><p class="small mb0">Canary and rollback for a web service. Today: for a language model change, with quality as a trigger, not only errors and latency.</p></div>
+  </div>
+  <aside class="notes"><p>This is the snapshot behind Day 1's unrecorded change. Wahaj pinned the September snapshot and now releases the October one deliberately.</p></aside>
+</section>
+
+<section class="slide" data-label="Shadow" id="shadow-then-canary" data-lo="LO3" data-n="24" data-session="3">
+  <div class="kicker">Two ways to expose a candidate</div>
+  <h2>Shadow risks nobody; a canary risks a few, on purpose</h2>
+  <div class="cols cols-2">
+    <div class="card c-cyan"><h4>Shadow</h4><p class="small mb0">The candidate answers a copy of every request; users see only the stable answer. Double the tokens, no user impact.</p></div>
+    <div class="card c-coral"><h4>Canary</h4><p class="small mb0">A share of real users get the candidate: 5%, then 25%, then 50%. Each step waits for an analysis to pass.</p></div>
+  </div>
+  <div class="stat mt"><div class="big">2,190 ms · 0.920</div><div class="lbl">the candidate in 30 minutes of shadow: p95 latency and share graded ok (stable 2,170 ms, 0.907; Arabic 9% of requests)</div></div>
+  <aside class="notes"><p>From the course's run of Lab 2.3, step 1. The shadow looks good. Keep the Arabic share in mind: it is the reason the shadow is misleading.</p></aside>
+</section>
+
+<section class="slide" data-label="Analysis" id="canary-analysis" data-lo="LO3" data-n="25" data-session="3">
+  <div class="kicker">Lab 2.3 · step 2</div>
+  <h2>An analysis needs a minimum sample, a paired comparison and stated triggers</h2>
+  <pre class="code s" data-file="Lab 2.3"><code class="language-python"><span class="hljs-keyword">if</span> n &lt; MIN_SAMPLE:                       <span class="hljs-comment"># 50</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;inconclusive&quot;</span>, <span class="hljs-string">f&quot;<span class="hljs-subst">{n}</span> requests&quot;</span>
+<span class="hljs-keyword">if</span> p95 &gt; SLO_P95_MS:                      <span class="hljs-comment"># 2,500 ms</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;fail&quot;</span>, <span class="hljs-string">&quot;latency trigger: ...&quot;</span>
+<span class="hljs-keyword">if</span> ok &lt; ok_stable_same_requests - <span class="hljs-number">0.05</span>:   <span class="hljs-comment"># paired</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;fail&quot;</span>, <span class="hljs-string">&quot;quality trigger: ...&quot;</span>
+<span class="hljs-keyword">return</span> <span class="hljs-string">&quot;pass&quot;</span>, why</code></pre>
+  <aside class="notes"><p>"Inconclusive" is not "pass": the rollout waits, and after a second inconclusive window it pauses for a person. The quality comparison uses the stable version's grade on the same requests, which removes the effect of the question mix.</p></aside>
+</section>
+
+<section class="slide" data-label="Steps" id="argo-style-steps" data-lo="LO3" data-n="26" data-session="3">
+  <div class="kicker">Lab 2.3 · step 3</div>
+  <h2>Steps in the Argo Rollouts style: set a weight, pause, analyse</h2>
+  <div class="flow">
+    <div class="step c-teal"><b>setWeight 5</b>pause 60 min</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>setWeight 25</b>pause 30 min</div>
+    <div class="arrow">→</div>
+    <div class="step c-amber"><b>setWeight 50</b>pause 30 min</div>
+    <div class="arrow">→</div>
+    <div class="step c-purple"><b>100</b>promote</div>
+  </div>
+  <p class="small mt">In Argo Rollouts, <code>steps</code> hold <code>setWeight</code> and <code>pause</code>; a background <code>analysis</code> that fails aborts the rollout and traffic returns to the stable version.</p>
+  <aside class="notes"><p>Sources: Argo Rollouts documentation, Canary strategy. The lab's K.run_rollout follows those semantics on replayed traffic so it runs anywhere; labs/cluster/ has the same steps as a Rollout object and the triggers as an AnalysisTemplate.</p></aside>
+</section>
+
+<section class="slide" data-label="Rolled back" id="rolled-back-at-25" data-lo="LO3" data-n="27" data-session="3">
+  <div class="kicker">Lab 2.3 · step 4, from the course's run</div>
+  <h2>5% passed; at 25% the latency trigger rolled the canary back</h2>
+  <div class="trace s">
+    <div class="ev call"><b>minute 0</b>setWeight 5</div>
+    <div class="ev result"><b>minute 60</b>pass: n=70, p95 2,123 ms, ok 0.900 against stable 0.914, Arabic 4%</div>
+    <div class="ev call"><b>minute 60</b>setWeight 25</div>
+    <div class="ev error"><b>minute 90</b>fail, latency trigger: n=157, p95 3,115 ms, ok 0.803 against stable 0.873, Arabic 43%</div>
+    <div class="ev guard"><b>minute 90</b>abort: rolled back to stable</div>
+  </div>
+  <aside class="notes"><p>The next shift asks mostly in Arabic from minute 70, and the new snapshot is slow and weaker on Arabic text (planted in the replay). The quality trigger would have fired too: 0.803 against 0.873 is more than 0.05 below. The release log gets one more line: rolled back, latency trigger, with the numbers.</p></aside>
+</section>
+
+<section class="slide" data-label="Lesson" id="traffic-decides" data-lo="LO3" data-n="28" data-session="3">
+  <div class="kicker">What the canary saw that nothing else did</div>
+  <h2>A candidate is only tested on the traffic it has seen</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Offline gate</h4><p class="small mb0">Fixed cases, mostly English: passed.</p></div>
+    <div class="card c-cyan"><h4>Shadow, 30 minutes</h4><p class="small mb0">9% Arabic: looked better than stable.</p></div>
+    <div class="card c-coral"><h4>Canary at 25%</h4><p class="small mb0">43% Arabic: failed on latency and quality.</p></div>
+  </div>
+  <div class="callout tip small mt"><b>Fix the instruments too.</b> Add Arabic cases to the offline set and run the shadow across a shift change before the next canary.</div>
+  <aside class="notes"><p>Ask each table for one change to the offline set. This is also why the canary's analysis states its sample: a reviewer can see that the 5% window was English-heavy.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-3" data-lo="LO3" data-n="29" data-session="3">
+  <div class="kicker">Checkpoint</div>
+  <h2>A clean first window</h2>
+  <div class="quiz" data-type="single" data-lo="LO3" data-id="checkpoint-3-q1">
+    <p class="lead">At 5% the canary served 40 requests in its first pause, with no latency or quality problem. The analysis's minimum sample is 50. What should the rollout do?</p>
+    <div class="opts">
+      <div class="opt" data-why="Reads absence of evidence as evidence of absence" data-k="A">Advance to 25%: nothing went wrong</div>
+      <div class="opt" data-ok data-k="B">Report inconclusive and extend the pause before deciding</div>
+      <div class="opt" data-why="Punishes a candidate for low traffic, not for a problem" data-k="C">Roll back: the sample is too small</div>
+      <div class="opt" data-why="Changes the rule mid-release to fit the data" data-k="D">Lower the minimum sample to 40 for this release</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> A short clean window says little. The rule waits for enough requests and, if still short, hands the decision to a person.</div>
+  </div>
+  <aside class="notes"><p>Answer: B. K.run_rollout extends an inconclusive pause once, then pauses for a person.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-2-3" data-auto="lab" data-lab="2.3" data-label="Lab 2.3" data-n="30" data-session="3">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 2.3 · 25 min</div><h2>A canary that rolls itself back</h2><p class="lead small">Replay a day of Nabd traffic through a canary of a new model snapshot, analyse each stage for quality and latency and let the trigger roll it back.</p><a class="nb" href="../labs/D2_3_canary_rollback.ipynb">D2_3_canary_rollback.ipynb</a></div><ul class="checklist"><li>Shadow first <span class="min">5 min</span></li><li>Analyse one canary window <span class="min">8 min</span></li><li>Stages and triggers <span class="min">7 min</span></li><li>Read where and why it rolled back <span class="min">5 min</span></li><li class="stretch">✱ Stretch: Write the same analysis as an Argo Rollouts AnalysisTemplate</li></ul></div>
+  <aside class="notes"><p>Usual problems: comparing the canary with the stable version's overall rate instead of the same requests; p95 computed over all traffic instead of the canary's window; forgetting the inconclusive branch. The stretch writes an AnalysisTemplate; compare it with labs/cluster/analysis-template.yaml.</p></aside>
+</section>
+
+<!-- ======================= SESSION 4 ======================= -->
+<section class="slide section" id="s4" data-auto="section" data-session="4" data-n="31">
+  <div class="kicker">Session 4</div>
+  <h1>Cost and capacity signals</h1>
+  <ul class="bullets outcomes"><li>Price a month of token and compute usage</li><li>Compute cost per successful outcome and utilisation per system</li><li>Show cost back by team and set a budget alert</li></ul>
+  <div class="sess-no">04</div>
+</section>
+
+<section class="slide" data-label="Per outcome" id="cost-per-success" data-lo="LO6" data-n="32" data-session="4">
+  <div class="kicker">Cost signals</div>
+  <h2>Divide what a system cost by the outcomes it delivered, not by its calls</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>Failed attempts are paid for too; the work still has to be done.</li>
+      <li>Each system needs an outcome someone agrees on: a confirmed fault, an accepted answer, a resolved report.</li>
+      <li>Prices in the lab are stated assumptions in riyals; replace them with your provider's list.</li>
+    </ul>
+    <div class="card c-coral flat"><h4>The trap</h4><p class="small mb0">A model with half the price per call and twice the retries costs more per success.</p></div>
+  </div>
+  <aside class="notes"><p>Agree the outcome definition with the business owner before the first report: Saqer for Nabd, customer care for Mubadir, Lamya for the classifier. data/prices.json says the prices are course assumptions.</p></aside>
+</section>
+
+<section class="slide" data-label="October" id="october-cost-table" data-lo="LO6" data-n="33" data-session="4">
+  <div class="kicker">Lab 2.4 · step 2, from the course's run</div>
+  <h2>Per call, Mubadir looks cheap; per resolved report, it is the most expensive</h2>
+  <table class="t small">
+    <tr><th>System</th><th class="num">Cost (SAR)</th><th class="num">Per request</th><th class="num">Success rate</th><th class="num">Per success</th></tr>
+    <tr><td>classifier</td><td class="num">40.55</td><td class="num">0.0005</td><td class="num">0.34</td><td class="num">0.0635</td></tr>
+    <tr><td>Nabd</td><td class="num">106.05</td><td class="num">0.0034</td><td class="num">0.85</td><td class="num">0.0041</td></tr>
+    <tr class="hl"><td>Mubadir</td><td class="num">112.92</td><td class="num">0.0110</td><td class="num">0.70</td><td class="num">0.0156</td></tr>
+  </table>
+  <p class="small mt">The classifier's outcome is a flagged feeder that inspection confirmed; its requests are feeder scores, so its cost per request is not comparable with the others.</p>
+  <aside class="notes"><p>Synthetic month of October 2026 at assumed prices. Mubadir's daily cost per resolved report jumps from about 0.010 to 0.084 SAR on 14 to 16 October: a runaway loop, which Day 4 finds and stops.</p></aside>
+</section>
+
+<section class="slide" data-label="Cache" id="cache-hit-rate" data-lo="LO6" data-n="34" data-session="4">
+  <div class="kicker">Lab 2.4 · step 3</div>
+  <h2>A date at the top of the prompt cut Nabd's cache hit rate from 0.62 to 0.12</h2>
+  <div class="cols cols-2">
+    <div class="bars">
+      <div class="row"><span>before 18 Oct</span><div class="bar c-teal" style="--w:62%"></div><span class="val">0.62</span></div>
+      <div class="row"><span>from 18 Oct</span><div class="bar c-coral" style="--w:12%"></div><span class="val">0.12</span></div>
+    </div>
+    <ul class="bullets small">
+      <li>Provider prompt caches match the beginning of a request.</li>
+      <li>Stable text first (instructions, tools), changing text last (date, question).</li>
+      <li>Cached input tokens are priced at a tenth here: the change raised Nabd's daily cost.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>The tenth is the course's assumed price ratio; providers publish their own. Ask: which part of the release unit changed on the 18th? The prompt, without a release: Day 1's manifest would have caught it.</p></aside>
+</section>
+
+<section class="slide" data-label="Utilisation" id="utilisation" data-lo="LO6" data-n="35" data-session="4">
+  <div class="kicker">Resource use</div>
+  <h2>Utilisation shows what you pay for and do not use</h2>
+  <div class="bars">
+    <div class="row"><span>classifier</span><div class="bar c-coral" style="--w:12%"></div><span class="val">0.12</span></div>
+    <div class="row"><span>Mubadir</span><div class="bar c-amber" style="--w:22%"></div><span class="val">0.22</span></div>
+    <div class="row"><span>Nabd</span><div class="bar c-teal" style="--w:28%"></div><span class="val">0.28</span></div>
+  </div>
+  <p class="small mt">The classifier keeps 24 node-hours a day provisioned for one daily batch and a monthly retrain. Scale it to zero between runs, or share the nodes.</p>
+  <aside class="notes"><p>Processor hours used over hours provisioned, October. For language model systems that call a hosted model, tokens are the main cost and utilisation concerns only the service around them; for a self-hosted model (AE-205) utilisation of the serving hardware dominates.</p></aside>
+</section>
+
+<section class="slide" data-label="Showback" id="showback-and-alerts" data-lo="LO6" data-n="36" data-session="4">
+  <div class="kicker">Lab 2.4 · step 4</div>
+  <h2>Show each team its cost, and alert before the budget is gone</h2>
+  <div class="cols cols-2">
+    <table class="t small">
+      <tr><th>Team</th><th class="num">SAR</th></tr>
+      <tr><td>customer-care (Mubadir)</td><td class="num">112.92</td></tr>
+      <tr><td>field-operations (Nabd)</td><td class="num">84.75</td></tr>
+      <tr><td>asset-management (classifier)</td><td class="num">40.55</td></tr>
+      <tr><td>control-room (Nabd)</td><td class="num">21.29</td></tr>
+    </table>
+    <div class="stack">
+      <div class="card c-teal flat"><h4>Burn rate, from day 7</h4><p class="small mb0">Month-to-date spend above the budget's share by 20%: Mubadir alerted on 15 October.</p></div>
+      <div class="card c-coral flat"><h4>Forecast</h4><p class="small mb0">Projected month-end above budget: Mubadir on the 14th, but also the classifier on the 7th, because of its planned retrain.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Budgets are course assumptions (classifier 60, Nabd 100, Mubadir 90 SAR). The forecast is earlier and noisier: the classifier's forecast alert is a false alarm caused by a planned job inside the seven-day window. Exclude planned jobs from forecasts, or forecast them separately.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-4" data-lo="LO6" data-n="37" data-session="4">
+  <div class="kicker">Checkpoint</div>
+  <h2>Cheaper per call</h2>
+  <div class="quiz" data-type="single" data-lo="LO6" data-id="checkpoint-4-q1">
+    <p class="lead">A new configuration of Mubadir halves the cost per model call, but the share of reports resolved without a person drops from 0.70 to 0.40. What happens to the cost per resolved report?</p>
+    <div class="opts">
+      <div class="opt" data-why="Divides by calls instead of outcomes" data-k="A">It halves, like the cost per call</div>
+      <div class="opt" data-why="Ignores that every unresolved report still cost its calls" data-k="B">It stays the same: the work is the same</div>
+      <div class="opt" data-ok data-k="C">It falls only slightly, and every unresolved report adds a person's time on top</div>
+      <div class="opt" data-why="Assumes tokens are the only cost of a failure" data-k="D">It cannot be known without the token counts</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Half the cost spread over 0.40 instead of 0.70 successes is 0.5 × 0.70 / 0.40 ≈ 0.88 of the old cost per success, and the extra failures, 30 more in every 100 reports, each need a person.</div>
+  </div>
+  <aside class="notes"><p>Answer: C. Work the arithmetic on the board.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-2-4" data-auto="lab" data-lab="2.4" data-label="Lab 2.4" data-n="38" data-session="4">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 2.4 · 25 min</div><h2>Cost per successful outcome</h2><p class="lead small">Price a month of Wahaj's token, compute and outcome logs, compute cost per successful outcome, cache hit rate and utilisation per system, show it back by team and set budget alerts.</p><a class="nb" href="../labs/D2_4_cost_signals.ipynb">D2_4_cost_signals.ipynb</a></div><ul class="checklist"><li>Price the month <span class="min">6 min</span></li><li>Cost per successful outcome by system <span class="min">6 min</span></li><li>Utilisation and cache hit rate <span class="min">5 min</span></li><li>Showback by team and a budget alert <span class="min">8 min</span></li><li class="stretch">✱ Stretch: Alert on the month-end forecast, not on the spend so far</li></ul></div>
+  <aside class="notes"><p>Usual problems: pricing cached tokens at the full input price; dividing by requests for the classifier, whose requests are feeder scores; alerting on daily spend, which fires on every planned retrain. Ask early finishers to find the cause of Mubadir's expensive days in the data: tokens per session.</p></aside>
+</section>
+
+<!-- ======================= CLOSING ======================= -->
+<section class="slide" data-label="Recap" id="day-2-recap" data-n="39" data-session="4">
+  <div class="kicker">Day 2 recap</div>
+  <h2>One artefact to production, a gate and a canary for model changes, and cost per outcome</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Delivery</h4><p class="small mb0">Build once, promote the digest, a reviewer who did not merge.</p></div>
+    <div class="card c-cyan"><h4>Releases on evidence</h4><p class="small mb0">Offline gate with floors, then a canary with stated triggers.</p></div>
+    <div class="card c-coral"><h4>Cost signals</h4><p class="small mb0">Per successful outcome, cache hit rate, utilisation, alerts.</p></div>
+  </div>
+  <aside class="notes"><p>The release log now holds two shipped releases and one rolled back on a stated metric. Delivery and rollback are 20 of the rubric's 100.</p></aside>
+</section>
+
+<section class="slide dark" data-label="Tomorrow" id="tomorrow-observe" data-n="40" data-session="4">
+  <div class="kicker">Tomorrow · Day 3</div>
+  <h2>Observe: traces, drift monitors that do not cry wolf, online evaluation and a retraining policy</h2>
+  <p class="lead">Tomorrow you find out why Nabd is slow, replay a month of inputs with two hidden shifts, and grade a week of live answers.</p>
+  <aside class="notes"><p>Every Day 3 lab starts from its own reference state.</p></aside>
+</section>
+</div>
+<script type="application/json" id="academy-data">{"v":1,"engine":"1.0.0","build":{"at":"2026-11-15T16:00:10Z","version":"2027.1.0","commit":"42f68a3"},"course":{"id":"ae-305","code":"AE-305","title":"Operating Machine Learning and Language Model Systems","track":"ai-engineering","lang":"en","dir":"ltr","url":"https://sdaiaacademy.github.io/ae-305/","repo":"SDAIAAcademy/ae-305","home":"../index.html"},"deck":{"id":"day2","kind":"day","day":2,"label":"Day 2","title":"Deliver","prev":"day1.html","next":"day3.html","md":"day2.md","alt":{}},"sessions":[{"n":1,"label":"Session 1","title":"Continuous delivery for models","slide":"s1","outcomes":["Promote one artefact by digest instead of rebuilding it","Add a staging check and an approval step before production","Keep a deployment log a reviewer can audit"],"minutes":50,"lab":{"id":"2.1","title":"Merge to staging to production","minutes":25,"href":"../labs/D2_1_delivery_pipeline.ipynb"}},{"n":2,"label":"Session 2","title":"Language model releases","slide":"s2","outcomes":["Describe each language model change as a change to the release unit","Run a provided evaluation gate on a champion and three candidates","Block a release on the metric that matters, not on the average"],"minutes":50,"lab":{"id":"2.2","title":"Three changes through the evaluation gate","minutes":25,"href":"../labs/D2_2_llm_release_gate.ipynb"}},{"n":3,"label":"Session 3","title":"Shadow and canary on evidence","slide":"s3","outcomes":["Compare a candidate in shadow without user impact","Analyse a canary window with a minimum sample","Roll back automatically on a quality or latency trigger"],"minutes":50,"lab":{"id":"2.3","title":"A canary that rolls itself back","minutes":25,"href":"../labs/D2_3_canary_rollback.ipynb"}},{"n":4,"label":"Session 4","title":"Cost and capacity signals","slide":"s4","outcomes":["Price a month of token and compute usage","Compute cost per successful outcome and utilisation per system","Show cost back by team and set a budget alert"],"minutes":50,"lab":{"id":"2.4","title":"Cost per successful outcome","minutes":25,"href":"../labs/D2_4_cost_signals.ipynb"}}],"slides":[{"id":"title","n":1,"title":"Deliver","kind":"title","session":0,"hash":"99e61afe","md":"#### [day2#title] Deliver\n\n*SDAIA Academy · Operating Machine Learning and Language Model Systems*\n\nDay 2: The same artefact from merge to production, language model changes through a gate, a canary that rolls back, and the cost of each outcome\n\nAI Engineering Track · 4 teaching days + capstone day · 4 sessions · 4 labs · AE-305","notes":"Yesterday ended with a champion promoted by moving an alias. Today is about getting changes to production safely: the same artefact all the way, language model changes through a gate and a canary, and the cost of what runs.","minutes":null,"lo":[]},{"id":"agenda","n":2,"title":"Deliver","kind":"content","session":0,"hash":"fbfdc875","md":"#### [day2#agenda] Deliver\n\n*Today*\n\n- **Session 1 · Continuous delivery for models**: Merge, staging and production promote one artefact by digest, with a person approving the last step\n- **Session 2 · Language model releases**: A prompt edit, a model swap and an index refresh are releases, each through the same evaluation gate\n- **Session 3 · Shadow and canary on evidence**: Shadow first, then canary stages that advance only on enough evidence and roll back on a stated trigger\n- **Session 4 · Cost and capacity signals**: Cost per successful outcome, cache hit rate and utilisation for each system, shown back by team","notes":"","minutes":null,"lo":[]},{"id":"review-day-1","n":3,"title":"Which part of the release unit changed?","kind":"quiz","session":0,"hash":"caa3f058","md":"#### [day2#review-day-1] Which part of the release unit changed?\n\n*Review of Day 1*\n\n**Question:** The fault-risk model's registry version, threshold and code hash are unchanged, but its predictions on the same feeders differ from last week's. What do you check first?\n\n- A. Nothing: the model version is the same, so it is noise\n- B. Retrain and compare the AUC\n- C. The input data and environment the predictions were made with\n- D. Lower the promotion tolerance","notes":"Answer: C. Two minutes. If the room hesitates, put the seven-part table of Day 1 back on the screen.","minutes":null,"lo":["LO1","LO2"]},{"id":"s1","n":4,"title":"Continuous delivery for models","kind":"section","session":1,"hash":"1171551d","md":"#### [day2#s1] Continuous delivery for models\n\n*Session 1*\n\n- Promote one artefact by digest instead of rebuilding it\n- Add a staging check and an approval step before production\n- Keep a deployment log a reviewer can audit","notes":"","minutes":null,"lo":["LO1","LO3"]},{"id":"push-to-production","n":5,"title":"Every push to main goes straight to production, rebuilt with the tag latest","kind":"content","session":1,"hash":"065f52b6","md":"#### [day2#push-to-production] Every push to main goes straight to production, rebuilt with the tag latest\n\n*Where Wahaj starts*\n\n```yaml\n# file: data/delivery/release_start.yml\njobs:\n  deploy:\n    steps:\n      - run: make test\n      - run: docker build -t registry.wahaj.example/nabd:latest .\n      - run: docker push registry.wahaj.example/nabd:latest\n      - run: ./deploy.sh production registry.wahaj.example/nabd:latest\n```\n\nLab 2.1's checker fails it on six of seven rules: no digest published, no staging, no approval, a moving tag, nothing promoted, no smoke check.","notes":"Ask: if production misbehaves tonight, what do you roll back to? \"The previous latest\" is not a version. The checker's rules are in opskit.check_workflow; read them aloud.","minutes":null,"lo":["LO3"]},{"id":"promote-one-digest","n":6,"title":"Build once; promote the same digest through every environment","kind":"content","session":1,"hash":"c7afa5c8","md":"#### [day2#promote-one-digest] Build once; promote the same digest through every environment\n\n*Continuous delivery for models*\n\n1. **Merge to main** tests run\n2. **Build** push, publish the digest\n3. **Staging** deploy the digest, smoke check\n4. **Approval** a reviewer, not the author\n5. **Production** the same digest\n\n> **A rebuild is a new artefact.** The same commit can pull a newer base image or package. Only the digest that passed staging goes on.","notes":"The digest is the content hash of the image, the same idea as Day 1's manifest id. The model inside the image is the registry's champion, loaded by alias, so a model promotion and a code release are two kinds of release that both leave a record.","minutes":null,"lo":["LO1","LO3"]},{"id":"digest-as-output","n":7,"title":"The build job hands its digest to the jobs that deploy","kind":"content","session":1,"hash":"c763d379","md":"#### [day2#digest-as-output] The build job hands its digest to the jobs that deploy\n\n*Lab 2.1 · step 2*\n\n```yaml\n# file: release.yml\nbuild:\n  outputs:\n    digest: ${{ steps.push.outputs.digest }}\ndeploy-staging:\n  needs: build\n  environment: staging\n  steps:\n    - run: ./deploy.sh staging ${{ needs.build.outputs.digest }}\n    - run: ./smoke_check.sh staging\ndeploy-production:\n  needs: [build, deploy-staging]\n  environment: production\n```","notes":"GitHub Actions syntax; GitLab CI has the same parts (stages, needs, environments, manual jobs). The lab writes the whole file and the checker verifies the rules. AI policy: an assistant may explain a failing rule; it does not write the workflow.","minutes":null,"lo":["LO3"]},{"id":"approval-is-a-rule","n":8,"title":"The approval lives in the environment's protection rules, not in the file","kind":"content","session":1,"hash":"4b52ec44","md":"#### [day2#approval-is-a-rule] The approval lives in the environment's protection rules, not in the file\n\n*The approval step*\n\n- Required reviewers: up to six people or teams; one approval lets the job start.\n- Self-review can be blocked: Dhafer merged, so Mutab approves.\n- A pull request cannot remove the rule by editing the workflow.\n\n- **Plan limits.** On GitHub's free plans, required reviewers work on public repositories only. The capstone repository is public.","notes":"Sources: GitHub Docs, Deployments and environments (checked November 2026). Other protection rules: a wait timer, and which branches may deploy. Ask who at Wahaj should be a production reviewer for Nabd: the platform lead and the control-room duty engineer.","minutes":null,"lo":["LO3"]},{"id":"simulated-release","n":9,"title":"The release waits at production until a reviewer who did not merge approves","kind":"content","session":1,"hash":"0fc03a1a","md":"#### [day2#simulated-release] The release waits at production until a reviewer who did not merge approves\n\n*Lab 2.1 · step 4, from the course's run*\n\n- build: built sha256:ce56953fe2d35ec1\n- staging: deployed the digest · smoke check passed\n- production: waiting for approval\n- approval: Dhafer Al-Hazzani: refused, he merged the change\n- production: approved by Mutab Al-Shalhoub · deployed the same digest","notes":"The simulator's digest is a short synthetic hash. The deployment log records who merged, who approved and which digest ran where: the audit record the responsible-use line of the entry asks for.","minutes":null,"lo":["LO3"]},{"id":"rollback-is-a-redeploy","n":10,"title":"A rollback redeploys a recorded digest through the same gate","kind":"content","session":1,"hash":"70f4705c","md":"#### [day2#rollback-is-a-redeploy] A rollback redeploys a recorded digest through the same gate\n\n*The other direction*\n\n```yaml\n# file: rollback.yml\non:\n  workflow_dispatch:\n    inputs:\n      digest: {required: true}\njobs:\n  rollback-production:\n    environment: production\n    steps:\n      - run: ./deploy.sh production ${{ inputs.digest }}\n```\n\n- No build: the digest already passed once.\n- The same reviewers approve it, so a rollback is also recorded.\n- On a cluster, Argo CD or Argo Rollouts keep the previous revision for the same purpose.","notes":"The stretch of Lab 2.1. The optional cluster path in labs/cluster/ shows the Rollout object, which keeps old revisions (revisionHistoryLimit). It was not run when the course was built: try it before offering it to a cohort.","minutes":null,"lo":["LO3"]},{"id":"checkpoint-1","n":11,"title":"Approved, then rebuilt","kind":"quiz","session":1,"hash":"5dcff1c2","md":"#### [day2#checkpoint-1] Approved, then rebuilt\n\n*Checkpoint*\n\n**Question:** The production job checks out the approved commit, builds the image again and deploys it. Staging tested an image built from the same commit an hour earlier. What is wrong?\n\n- A. Production may run an artefact nobody tested: it should deploy the digest staging tested\n- B. Nothing: the same commit gives the same image\n- C. Nothing: a reviewer approved the commit\n- D. Only the build time: run both builds at once","notes":"Answer: A.","minutes":null,"lo":["LO3"]},{"id":"lab-2-1","n":12,"title":"Merge to staging to production","kind":"lab","session":1,"hash":"ac40ec9c","md":"#### [day2#lab-2-1] Merge to staging to production\n\nLab 2.1 · 25 min\n\nTurn a single-job workflow into merge, staging and production jobs that promote one digest, add the approval step, check the workflow and simulate a release.\n\n[D2_1_delivery_pipeline.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D2_1_delivery_pipeline.ipynb)\n\n- [ ] Read the starting workflow (4 min)\n- [ ] Staging and production jobs that promote one digest (8 min)\n- [ ] The approval step and its reviewers (6 min)\n- [ ] Check it and simulate a release (7 min)\n- [ ] ✱ Stretch: A rollback job that redeploys the previous digest","notes":"Usual problems: YAML indentation; passing the image tag instead of the digest; forgetting that production needs build too to read its output; putting a manual approval step in the file instead of the environment. Participants with a cluster can follow labs/cluster/README.md afterwards.","minutes":null,"lo":[]},{"id":"s2","n":13,"title":"Language model releases","kind":"section","session":2,"hash":"51c3a3cd","md":"#### [day2#s2] Language model releases\n\n*Session 2*\n\n- Describe each language model change as a change to the release unit\n- Run a provided evaluation gate on a champion and three candidates\n- Block a release on the metric that matters, not on the average","notes":"","minutes":null,"lo":["LO3"]},{"id":"three-llm-changes","n":14,"title":"A prompt, a model and an index are each a release of Nabd","kind":"content","session":2,"hash":"3363df98","md":"#### [day2#three-llm-changes] A prompt, a model and an index are each a release of Nabd\n\n*Language model releases*\n\n| Candidate | Release | Part changed | Why someone wants it |\n| --- | --- | --- | --- |\n| Prompt edit | nabd-2026.11.1 | prompt v1 to v2 | always cite manual and section |\n| Model swap | nabd-2026.11.2 | steady to swift | cheaper and faster |\n| Index refresh | nabd-2026.11.3 | manuals v3 to v4 | MM-02 revised, MM-11 added |\n\n> **One part each.** When a release changes one part, the gate's result says which part caused it.","notes":"Lab 2.2 step 1 checks that each candidate changes exactly one part. Ask: which one would you expect to be risky? Most rooms say the model swap; the index refresh is the one they underestimate.","minutes":null,"lo":["LO3"]},{"id":"provided-eval-gate","n":15,"title":"24 cases, graded by code, with hard floors and allowed drops","kind":"content","session":2,"hash":"22397848","md":"#### [day2#provided-eval-gate] 24 cases, graded by code, with hard floors and allowed drops\n\n*The evaluation gate, ready-made from AE-303*\n\n| Metric | Floor | Allowed drop |\n| --- | --- | --- |\n| Safety procedures complete, steps in order | 1.00 | 0.00 |\n| Out-of-scope questions declined | 1.00 | 0.00 |\n| Answer has the required facts | 0.75 | 0.05 |\n| Citation correct | none | 0.05 |\n| Case pass rate | none | 0.05 |","notes":"The graders are in labs/graders.py and the rules in labs/evalgate.py. Building graders and calibrating them is AE-303's subject; this course uses them as instruments. Every rate is printed with a Wilson interval: with 6 safety cases the interval on 1.00 runs down to 0.61, which is why the safety rule is a floor and not a statistical comparison.","minutes":null,"lo":["LO3"]},{"id":"gate-results","n":16,"title":"Two candidates ship; the model swap is blocked on one metric","kind":"content","session":2,"hash":"2e670054","md":"#### [day2#gate-results] Two candidates ship; the model swap is blocked on one metric\n\n*Lab 2.2 · step 3, from the course's run (scripted stand-in model)*\n\n|  | champion | prompt v2 | model swap | index v4 |\n| --- | --- | --- | --- | --- |\n| answer correct | 0.917 | 0.917 | 0.917 | 1.000 |\n| citation correct | 0.150 | 0.950 | 0.150 | 0.150 |\n| safety steps complete | 1.000 | 1.000 | 0.833 | 1.000 |\n| case pass rate | 0.250 | 0.917 | 0.208 | 0.292 |\n| **decision** |  | ship | block | ship |","notes":"These numbers come from the scripted stand-in model, not a hosted one: no working key existed when the course was built. The stand-in answers extractively from the retrieved manuals and follows the prompt's citation rules; its \"swift\" persona keeps at most four steps of a numbered procedure, which is the planted regression. With a free hosted model the numbers will differ; the decision logic is the same.","minutes":null,"lo":["LO3"]},{"id":"missing-safety-steps","n":17,"title":"The cheaper model dropped the last two steps of the isolation procedure","kind":"content","session":2,"hash":"4ab18408","md":"#### [day2#missing-safety-steps] The cheaper model dropped the last two steps of the isolation procedure\n\n*Lab 2.2 · step 4*\n\n**Crew:** Give me the isolation steps before I work on the feeder conductor.\n\n**Nabd, model swap (weak example):** 1. Obtain the switching programme. 2. Open the breaker and the load-break switch. 3. Lock and tag every isolation point. 4. Prove dead with an approved tester.\n\n- **Missing.**\n  5. Apply earths on both sides. 6. Record the permit number. An average score hides it; a floor on safety does not.","notes":"Case E02 of the evaluation set, as printed by the lab (shortened on the slide). The manuals are invented for the course and are not engineering guidance. Ask: who should hear about this block? The release owner, and the model provider if the regression is theirs.","minutes":null,"lo":["LO3"]},{"id":"index-refresh-is-release","n":18,"title":"An index refresh changes what the model reads, so it is gated like a model","kind":"content","session":2,"hash":"feed63df","md":"#### [day2#index-refresh-is-release] An index refresh changes what the model reads, so it is gated like a model\n\n*The change people underestimate*\n\n- A new manual can outrank the right section for an old question.\n- A changed chunking can split a procedure across two chunks, and the answer loses half.\n- Here it helped: version 4 answers the R-24 interlock and salt fog questions that version 3 could not.\n\n> **Refresh as a release.** Rebuild, fingerprint, gate, then switch the alias the assistant reads. Day 3 Session 4 adds a policy for when to refresh.","notes":"Cases E19 and E20 fail on index v3 and pass on v4. The fingerprint of the index is part of Day 1's manifest.","minutes":null,"lo":["LO3"]},{"id":"release-log","n":19,"title":"Every decision is written down with the metric it was taken on","kind":"content","session":2,"hash":"b41760da","md":"#### [day2#release-log] Every decision is written down with the metric it was taken on\n\n*Lab 2.2 · the release log*\n\n```json\n// file: release_log.jsonl\n{\"release\": \"nabd-2026.11.1\", \"changed\": [\"prompt\"], \"decision\": \"ship\", ...}\n{\"release\": \"nabd-2026.11.2\", \"changed\": [\"model\"], \"decision\": \"block\",\n \"decided_on\": \"safety_steps_complete\",\n \"reasons\": [\"safety_steps_complete 0.83 is below the floor 1.00\"]}\n{\"release\": \"nabd-2026.11.3\", \"changed\": [\"index\"], \"decision\": \"ship\", ...}\n```","notes":"The capstone's release log has this shape, with one line per decision of the week. LO3's evidence is \"logs showing two releases shipped and one rolled back on a stated metric\": after Session 3, this log has exactly that.","minutes":null,"lo":["LO3"]},{"id":"checkpoint-2","n":20,"title":"Same score, blocked","kind":"quiz","session":2,"hash":"7749f2b9","md":"#### [day2#checkpoint-2] Same score, blocked\n\n*Checkpoint*\n\n**Question:** The model swap scores the same as the champion on answer correctness and costs half as much. It fails one of six safety cases. What does the release owner do?\n\n- A. Ship it: the average score did not fall\n- B. Run the gate again until it passes\n- C. Ship it with a warning in the release notes\n- D. Block it, log the metric and the case, and raise it with the model's owner","notes":"Answer: D. Running again does not help a deterministic failure, and with a sampling model it would be gaming the gate.","minutes":null,"lo":["LO3"]},{"id":"lab-2-2","n":21,"title":"Three changes through the evaluation gate","kind":"lab","session":2,"hash":"78422333","md":"#### [day2#lab-2-2] Three changes through the evaluation gate\n\nLab 2.2 · 25 min\n\nRun Nabd's prompt edit, model swap and index refresh through the provided evaluation gate, read the result by category and write the release log: two pass, one is blocked.\n\n[D2_2_llm_release_gate.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D2_2_llm_release_gate.ipynb)\n\n- [ ] The release unit of each candidate (4 min)\n- [ ] Run the gate on the champion (6 min)\n- [ ] Run the three candidates (8 min)\n- [ ] Read by category and write the release log (7 min)\n- [ ] ✱ Stretch: Run one candidate on a live free model and compare","notes":"The gate runs 24 cases per release on the stand-in in a few seconds; with a free hosted model it takes longer and free quotas apply, so keep the stretch for those with a key. Usual problems: comparing candidates with each other instead of with the champion; reading only the decision and not the reasons.","minutes":null,"lo":[]},{"id":"s3","n":22,"title":"Shadow and canary on evidence","kind":"section","session":3,"hash":"946efd0d","md":"#### [day2#s3] Shadow and canary on evidence\n\n*Session 3*\n\n- Compare a candidate in shadow without user impact\n- Analyse a canary window with a minimum sample\n- Roll back automatically on a quality or latency trigger","notes":"","minutes":null,"lo":["LO3"]},{"id":"offline-gate-not-enough","n":23,"title":"The offline set is fixed; real traffic changes through the day","kind":"content","session":3,"hash":"234aad8b","md":"#### [day2#offline-gate-not-enough] The offline set is fixed; real traffic changes through the day\n\n*Why a canary after a gate*\n\n- The provider's snapshot `steady-2026-10-14` passed Nabd's offline gate.\n- The offline cases are mostly in English. Crews ask in both languages, and the mix moves with the shift.\n- A canary lets real traffic decide, a slice at a time, with a trigger that undoes it.\n\n- **Recap from AE-205.** Canary and rollback for a web service. Today: for a language model change, with quality as a trigger, not only errors and latency.","notes":"This is the snapshot behind Day 1's unrecorded change. Wahaj pinned the September snapshot and now releases the October one deliberately.","minutes":null,"lo":["LO3"]},{"id":"shadow-then-canary","n":24,"title":"Shadow risks nobody; a canary risks a few, on purpose","kind":"content","session":3,"hash":"c5bc06c0","md":"#### [day2#shadow-then-canary] Shadow risks nobody; a canary risks a few, on purpose\n\n*Two ways to expose a candidate*\n\n- **Shadow.** The candidate answers a copy of every request; users see only the stable answer. Double the tokens, no user impact.\n- **Canary.** A share of real users get the candidate: 5%, then 25%, then 50%. Each step waits for an analysis to pass.\n\n**2,190 ms · 0.920** the candidate in 30 minutes of shadow: p95 latency and share graded ok (stable 2,170 ms, 0.907; Arabic 9% of requests)","notes":"From the course's run of Lab 2.3, step 1. The shadow looks good. Keep the Arabic share in mind: it is the reason the shadow is misleading.","minutes":null,"lo":["LO3"]},{"id":"canary-analysis","n":25,"title":"An analysis needs a minimum sample, a paired comparison and stated triggers","kind":"content","session":3,"hash":"27d8d26b","md":"#### [day2#canary-analysis] An analysis needs a minimum sample, a paired comparison and stated triggers\n\n*Lab 2.3 · step 2*\n\n```python\n# file: Lab 2.3\nif n \u003c MIN_SAMPLE:                       # 50\n    return \"inconclusive\", f\"{n} requests\"\nif p95 > SLO_P95_MS:                      # 2,500 ms\n    return \"fail\", \"latency trigger: ...\"\nif ok \u003c ok_stable_same_requests - 0.05:   # paired\n    return \"fail\", \"quality trigger: ...\"\nreturn \"pass\", why\n```","notes":"\"Inconclusive\" is not \"pass\": the rollout waits, and after a second inconclusive window it pauses for a person. The quality comparison uses the stable version's grade on the same requests, which removes the effect of the question mix.","minutes":null,"lo":["LO3"]},{"id":"argo-style-steps","n":26,"title":"Steps in the Argo Rollouts style: set a weight, pause, analyse","kind":"content","session":3,"hash":"f082fe4a","md":"#### [day2#argo-style-steps] Steps in the Argo Rollouts style: set a weight, pause, analyse\n\n*Lab 2.3 · step 3*\n\n**setWeight 5** pause 60 min → **setWeight 25** pause 30 min → **setWeight 50** pause 30 min → **100** promote\n\nIn Argo Rollouts, `steps` hold `setWeight` and `pause`; a background `analysis` that fails aborts the rollout and traffic returns to the stable version.","notes":"Sources: Argo Rollouts documentation, Canary strategy. The lab's K.run_rollout follows those semantics on replayed traffic so it runs anywhere; labs/cluster/ has the same steps as a Rollout object and the triggers as an AnalysisTemplate.","minutes":null,"lo":["LO3"]},{"id":"rolled-back-at-25","n":27,"title":"5% passed; at 25% the latency trigger rolled the canary back","kind":"content","session":3,"hash":"b80639ef","md":"#### [day2#rolled-back-at-25] 5% passed; at 25% the latency trigger rolled the canary back\n\n*Lab 2.3 · step 4, from the course's run*\n\n- minute 0: setWeight 5\n- minute 60: pass: n=70, p95 2,123 ms, ok 0.900 against stable 0.914, Arabic 4%\n- minute 60: setWeight 25\n- minute 90: fail, latency trigger: n=157, p95 3,115 ms, ok 0.803 against stable 0.873, Arabic 43%\n- minute 90: abort: rolled back to stable","notes":"The next shift asks mostly in Arabic from minute 70, and the new snapshot is slow and weaker on Arabic text (planted in the replay). The quality trigger would have fired too: 0.803 against 0.873 is more than 0.05 below. The release log gets one more line: rolled back, latency trigger, with the numbers.","minutes":null,"lo":["LO3"]},{"id":"traffic-decides","n":28,"title":"A candidate is only tested on the traffic it has seen","kind":"content","session":3,"hash":"44b7d782","md":"#### [day2#traffic-decides] A candidate is only tested on the traffic it has seen\n\n*What the canary saw that nothing else did*\n\n- **Offline gate.** Fixed cases, mostly English: passed.\n- **Shadow, 30 minutes.** 9% Arabic: looked better than stable.\n- **Canary at 25%.** 43% Arabic: failed on latency and quality.\n\n> **Fix the instruments too.** Add Arabic cases to the offline set and run the shadow across a shift change before the next canary.","notes":"Ask each table for one change to the offline set. This is also why the canary's analysis states its sample: a reviewer can see that the 5% window was English-heavy.","minutes":null,"lo":["LO3"]},{"id":"checkpoint-3","n":29,"title":"A clean first window","kind":"quiz","session":3,"hash":"ac038f06","md":"#### [day2#checkpoint-3] A clean first window\n\n*Checkpoint*\n\n**Question:** At 5% the canary served 40 requests in its first pause, with no latency or quality problem. The analysis's minimum sample is 50. What should the rollout do?\n\n- A. Advance to 25%: nothing went wrong\n- B. Report inconclusive and extend the pause before deciding\n- C. Roll back: the sample is too small\n- D. Lower the minimum sample to 40 for this release","notes":"Answer: B. K.run_rollout extends an inconclusive pause once, then pauses for a person.","minutes":null,"lo":["LO3"]},{"id":"lab-2-3","n":30,"title":"A canary that rolls itself back","kind":"lab","session":3,"hash":"ef04062b","md":"#### [day2#lab-2-3] A canary that rolls itself back\n\nLab 2.3 · 25 min\n\nReplay a day of Nabd traffic through a canary of a new model snapshot, analyse each stage for quality and latency and let the trigger roll it back.\n\n[D2_3_canary_rollback.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D2_3_canary_rollback.ipynb)\n\n- [ ] Shadow first (5 min)\n- [ ] Analyse one canary window (8 min)\n- [ ] Stages and triggers (7 min)\n- [ ] Read where and why it rolled back (5 min)\n- [ ] ✱ Stretch: Write the same analysis as an Argo Rollouts AnalysisTemplate","notes":"Usual problems: comparing the canary with the stable version's overall rate instead of the same requests; p95 computed over all traffic instead of the canary's window; forgetting the inconclusive branch. The stretch writes an AnalysisTemplate; compare it with labs/cluster/analysis-template.yaml.","minutes":null,"lo":[]},{"id":"s4","n":31,"title":"Cost and capacity signals","kind":"section","session":4,"hash":"e2c1241c","md":"#### [day2#s4] Cost and capacity signals\n\n*Session 4*\n\n- Price a month of token and compute usage\n- Compute cost per successful outcome and utilisation per system\n- Show cost back by team and set a budget alert","notes":"","minutes":null,"lo":["LO6"]},{"id":"cost-per-success","n":32,"title":"Divide what a system cost by the outcomes it delivered, not by its calls","kind":"content","session":4,"hash":"575f2f81","md":"#### [day2#cost-per-success] Divide what a system cost by the outcomes it delivered, not by its calls\n\n*Cost signals*\n\n- Failed attempts are paid for too; the work still has to be done.\n- Each system needs an outcome someone agrees on: a confirmed fault, an accepted answer, a resolved report.\n- Prices in the lab are stated assumptions in riyals; replace them with your provider's list.\n\n- **The trap.** A model with half the price per call and twice the retries costs more per success.","notes":"Agree the outcome definition with the business owner before the first report: Saqer for Nabd, customer care for Mubadir, Lamya for the classifier. data/prices.json says the prices are course assumptions.","minutes":null,"lo":["LO6"]},{"id":"october-cost-table","n":33,"title":"Per call, Mubadir looks cheap; per resolved report, it is the most expensive","kind":"content","session":4,"hash":"29712f60","md":"#### [day2#october-cost-table] Per call, Mubadir looks cheap; per resolved report, it is the most expensive\n\n*Lab 2.4 · step 2, from the course's run*\n\n| System | Cost (SAR) | Per request | Success rate | Per success |\n| --- | --- | --- | --- | --- |\n| classifier | 40.55 | 0.0005 | 0.34 | 0.0635 |\n| Nabd | 106.05 | 0.0034 | 0.85 | 0.0041 |\n| Mubadir | 112.92 | 0.0110 | 0.70 | 0.0156 |\n\nThe classifier's outcome is a flagged feeder that inspection confirmed; its requests are feeder scores, so its cost per request is not comparable with the others.","notes":"Synthetic month of October 2026 at assumed prices. Mubadir's daily cost per resolved report jumps from about 0.010 to 0.084 SAR on 14 to 16 October: a runaway loop, which Day 4 finds and stops.","minutes":null,"lo":["LO6"]},{"id":"cache-hit-rate","n":34,"title":"A date at the top of the prompt cut Nabd's cache hit rate from 0.62 to 0.12","kind":"content","session":4,"hash":"acd0045c","md":"#### [day2#cache-hit-rate] A date at the top of the prompt cut Nabd's cache hit rate from 0.62 to 0.12\n\n*Lab 2.4 · step 3*\n\n| Item | Value |\n| --- | --- |\n| before 18 Oct | 0.62 |\n| from 18 Oct | 0.12 |\n\n- Provider prompt caches match the beginning of a request.\n- Stable text first (instructions, tools), changing text last (date, question).\n- Cached input tokens are priced at a tenth here: the change raised Nabd's daily cost.","notes":"The tenth is the course's assumed price ratio; providers publish their own. Ask: which part of the release unit changed on the 18th? The prompt, without a release: Day 1's manifest would have caught it.","minutes":null,"lo":["LO6"]},{"id":"utilisation","n":35,"title":"Utilisation shows what you pay for and do not use","kind":"content","session":4,"hash":"020cd419","md":"#### [day2#utilisation] Utilisation shows what you pay for and do not use\n\n*Resource use*\n\n| Item | Value |\n| --- | --- |\n| classifier | 0.12 |\n| Mubadir | 0.22 |\n| Nabd | 0.28 |\n\nThe classifier keeps 24 node-hours a day provisioned for one daily batch and a monthly retrain. Scale it to zero between runs, or share the nodes.","notes":"Processor hours used over hours provisioned, October. For language model systems that call a hosted model, tokens are the main cost and utilisation concerns only the service around them; for a self-hosted model (AE-205) utilisation of the serving hardware dominates.","minutes":null,"lo":["LO6"]},{"id":"showback-and-alerts","n":36,"title":"Show each team its cost, and alert before the budget is gone","kind":"content","session":4,"hash":"23131645","md":"#### [day2#showback-and-alerts] Show each team its cost, and alert before the budget is gone\n\n*Lab 2.4 · step 4*\n\n| Team | SAR |\n| --- | --- |\n| customer-care (Mubadir) | 112.92 |\n| field-operations (Nabd) | 84.75 |\n| asset-management (classifier) | 40.55 |\n| control-room (Nabd) | 21.29 |\n\n- **Burn rate, from day 7.** Month-to-date spend above the budget's share by 20%: Mubadir alerted on 15 October.\n- **Forecast.** Projected month-end above budget: Mubadir on the 14th, but also the classifier on the 7th, because of its planned retrain.","notes":"Budgets are course assumptions (classifier 60, Nabd 100, Mubadir 90 SAR). The forecast is earlier and noisier: the classifier's forecast alert is a false alarm caused by a planned job inside the seven-day window. Exclude planned jobs from forecasts, or forecast them separately.","minutes":null,"lo":["LO6"]},{"id":"checkpoint-4","n":37,"title":"Cheaper per call","kind":"quiz","session":4,"hash":"0df12b91","md":"#### [day2#checkpoint-4] Cheaper per call\n\n*Checkpoint*\n\n**Question:** A new configuration of Mubadir halves the cost per model call, but the share of reports resolved without a person drops from 0.70 to 0.40. What happens to the cost per resolved report?\n\n- A. It halves, like the cost per call\n- B. It stays the same: the work is the same\n- C. It falls only slightly, and every unresolved report adds a person's time on top\n- D. It cannot be known without the token counts","notes":"Answer: C. Work the arithmetic on the board.","minutes":null,"lo":["LO6"]},{"id":"lab-2-4","n":38,"title":"Cost per successful outcome","kind":"lab","session":4,"hash":"8973afa1","md":"#### [day2#lab-2-4] Cost per successful outcome\n\nLab 2.4 · 25 min\n\nPrice a month of Wahaj's token, compute and outcome logs, compute cost per successful outcome, cache hit rate and utilisation per system, show it back by team and set budget alerts.\n\n[D2_4_cost_signals.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D2_4_cost_signals.ipynb)\n\n- [ ] Price the month (6 min)\n- [ ] Cost per successful outcome by system (6 min)\n- [ ] Utilisation and cache hit rate (5 min)\n- [ ] Showback by team and a budget alert (8 min)\n- [ ] ✱ Stretch: Alert on the month-end forecast, not on the spend so far","notes":"Usual problems: pricing cached tokens at the full input price; dividing by requests for the classifier, whose requests are feeder scores; alerting on daily spend, which fires on every planned retrain. Ask early finishers to find the cause of Mubadir's expensive days in the data: tokens per session.","minutes":null,"lo":[]},{"id":"day-2-recap","n":39,"title":"One artefact to production, a gate and a canary for model changes, and cost per outcome","kind":"content","session":4,"hash":"3aaf7a55","md":"#### [day2#day-2-recap] One artefact to production, a gate and a canary for model changes, and cost per outcome\n\n*Day 2 recap*\n\n- **Delivery.** Build once, promote the digest, a reviewer who did not merge.\n- **Releases on evidence.** Offline gate with floors, then a canary with stated triggers.\n- **Cost signals.** Per successful outcome, cache hit rate, utilisation, alerts.","notes":"The release log now holds two shipped releases and one rolled back on a stated metric. Delivery and rollback are 20 of the rubric's 100.","minutes":null,"lo":[]},{"id":"tomorrow-observe","n":40,"title":"Observe: traces, drift monitors that do not cry wolf, online evaluation and a retraining policy","kind":"content","session":4,"hash":"43eab7ec","md":"#### [day2#tomorrow-observe] Observe: traces, drift monitors that do not cry wolf, online evaluation and a retraining policy\n\n*Tomorrow · Day 3*\n\nTomorrow you find out why Nabd is slow, replay a month of inputs with two hidden shifts, and grade a week of live answers.","notes":"Every Day 3 lab starts from its own reference state.","minutes":null,"lo":[]}],"activities":[{"id":"review-day-1-q1","slide":"review-day-1","type":"single","prompt":"The fault-risk model's registry version, threshold and code hash are unchanged, but its predictions on the same feeders differ from last week's. What do you check first?","options":[{"key":"A","text":"Nothing: the model version is the same, so it is noise"},{"key":"B","text":"Retrain and compare the AUC"},{"key":"C","text":"The input data and environment the predictions were made with"},{"key":"D","text":"Lower the promotion tolerance"}],"correct":[2],"explanation":"With model, configuration and code pinned, the remaining parts of the release are the data and the environment, and the manifest says which one moved.","misconceptions":["Assumes behaviour comes from the model file alone","Starts with the most expensive action before reading the record","","Changes the rule that would have explained the difference"],"lo":["LO1","LO2"]},{"id":"checkpoint-1-q1","slide":"checkpoint-1","type":"single","prompt":"The production job checks out the approved commit, builds the image again and deploys it. Staging tested an image built from the same commit an hour earlier. What is wrong?","options":[{"key":"A","text":"Production may run an artefact nobody tested: it should deploy the digest staging tested"},{"key":"B","text":"Nothing: the same commit gives the same image"},{"key":"C","text":"Nothing: a reviewer approved the commit"},{"key":"D","text":"Only the build time: run both builds at once"}],"correct":[0],"explanation":"Identity is the digest. A second build can differ, and then the evidence from staging is about something else.","misconceptions":["","Assumes a commit fully determines an image, ignoring base images and package updates","Treats the approval as the safeguard against a different artefact","Adds time, not identity: a later build can still differ"],"lo":["LO3"]},{"id":"checkpoint-2-q1","slide":"checkpoint-2","type":"single","prompt":"The model swap scores the same as the champion on answer correctness and costs half as much. It fails one of six safety cases. What does the release owner do?","options":[{"key":"A","text":"Ship it: the average score did not fall"},{"key":"B","text":"Run the gate again until it passes"},{"key":"C","text":"Ship it with a warning in the release notes"},{"key":"D","text":"Block it, log the metric and the case, and raise it with the model's owner"}],"correct":[3],"explanation":"The safety floor was set before the release because an incomplete isolation procedure can hurt someone. Cost does not trade against it.","misconceptions":["Lets the average decide a rule written as a floor","Treats a safety failure as a sample-size question","Moves the risk to crews without telling them which procedure fails",""],"lo":["LO3"]},{"id":"checkpoint-3-q1","slide":"checkpoint-3","type":"single","prompt":"At 5% the canary served 40 requests in its first pause, with no latency or quality problem. The analysis's minimum sample is 50. What should the rollout do?","options":[{"key":"A","text":"Advance to 25%: nothing went wrong"},{"key":"B","text":"Report inconclusive and extend the pause before deciding"},{"key":"C","text":"Roll back: the sample is too small"},{"key":"D","text":"Lower the minimum sample to 40 for this release"}],"correct":[1],"explanation":"A short clean window says little. The rule waits for enough requests and, if still short, hands the decision to a person.","misconceptions":["Reads absence of evidence as evidence of absence","","Punishes a candidate for low traffic, not for a problem","Changes the rule mid-release to fit the data"],"lo":["LO3"]},{"id":"checkpoint-4-q1","slide":"checkpoint-4","type":"single","prompt":"A new configuration of Mubadir halves the cost per model call, but the share of reports resolved without a person drops from 0.70 to 0.40. What happens to the cost per resolved report?","options":[{"key":"A","text":"It halves, like the cost per call"},{"key":"B","text":"It stays the same: the work is the same"},{"key":"C","text":"It falls only slightly, and every unresolved report adds a person's time on top"},{"key":"D","text":"It cannot be known without the token counts"}],"correct":[2],"explanation":"Half the cost spread over 0.40 instead of 0.70 successes is 0.5 × 0.70 / 0.40 ≈ 0.88 of the old cost per success, and the extra failures, 30 more in every 100 reports, each need a person.","misconceptions":["Divides by calls instead of outcomes","Ignores that every unresolved report still cost its calls","","Assumes tokens are the only cost of a failure"],"lo":["LO6"]}],"ai":{"context":{"course":"../context/course.md","courseJs":"../context/course.js","day":"day2.md","llms":"../llms.txt"},"tasks":[],"tools":[]},"bridge":{"allowedOrigins":[]},"features":{},"strings":{}}</script>
+<script src="../_engine/academy.js"></script>
+</body>
+</html>

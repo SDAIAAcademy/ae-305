@@ -1,0 +1,22 @@
+{
+ "run": "run_A",
+ "date": "2026-10-05",
+ "note": "Replay of the weekly probe set on the three systems",
+ "classifier": {
+  "flagged_feeders": 212
+ },
+ "nabd": {
+  "probe_answers_changed_vs_last_week": 0,
+  "requested_model": "hosted/steady-latest",
+  "response_model": "hosted/steady-2026-09-12",
+  "probes": [
+   "E01",
+   "E08",
+   "E13"
+  ]
+ },
+ "mubadir": {
+  "sessions_replayed": 5,
+  "tickets_opened": 3
+ }
+}

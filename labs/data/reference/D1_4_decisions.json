@@ -1,0 +1,14 @@
+{
+ "challenger-a": [
+  false,
+  [
+   "Al-Jabal AUC 0.829 is 0.048 below the champion's 0.877"
+  ]
+ ],
+ "challenger-b": [
+  true,
+  [
+   "passed overall and in every region"
+  ]
+ ]
+}

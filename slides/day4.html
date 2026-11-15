@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-ax="deck" data-track="ai-engineering">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 4 · Operate agents · Operating Machine Learning and Language Model Systems</title>
+<meta name="generator" content="SDAIA Academy engine 1.0.0">
+<link rel="icon" href="../_engine/icon.svg">
+<link rel="alternate" type="text/markdown" href="day4.md">
+<link rel="describedby" href="../llms.txt">
+<link rel="stylesheet" href="../_engine/academy.css">
+</head>
+<body>
+<div class="deck" data-course="Operating Machine Learning and Language Model Systems" data-track="ai-engineering" data-day="Day 4">
+<!-- ======================= OPENING ======================= -->
+<section class="slide title" id="title" data-auto="title" data-label="Welcome" data-n="1">
+  <div class="kicker">SDAIA Academy · Operating Machine Learning and Language Model Systems</div>
+  <h1>Operate agents</h1>
+  <p class="lead mt">Day 4: The agent as a versioned bundle, durable and idempotent, replayed when it fails and stopped when it runs away</p>
+  <div class="meta"><span class="track">AI Engineering Track</span><span>4 teaching days + capstone day</span><span>4 sessions · 4 labs</span><span>AE-305</span></div>
+  <aside class="notes"><p>The last teaching day is about Mubadir, the outage-ticket agent: what its release is, how it survives a crash, how an incident is reproduced, and how it is stopped. The capstone starts after Session 4.</p></aside>
+</section>
+
+<section class="slide" id="agenda" data-auto="agenda" data-label="Agenda" data-n="2">
+  <div class="kicker">Today</div>
+  <h2>Operate agents</h2>
+  <div class="agenda"><div class="item"><div><b>Session 1 · An agent is a bundle</b><small>Prompt, tools, harness settings and sandbox policy are versioned together, apart from the session log</small></div></div><div class="item"><div><b>Session 2 · Durable execution and safe retries</b><small>Checkpoints let a crashed run resume; idempotency keys make a retry safe</small></div></div><div class="item"><div><b>Session 3 · Replay to reproduce incidents</b><small>Recorded model and tool responses make an incident reproducible and turn it into a regression case</small></div></div><div class="item"><div><b>Session 4 · Budgets, gateways and kill switches</b><small>Step and spend limits at the gateway, a kill switch per agent version, and sessions that survive the stop</small></div></div></div>
+</section>
+
+<section class="slide" id="review-day-3" data-lo="LO4" data-n="3">
+  <div class="kicker">Review of Day 3</div>
+  <h2>Which alarm should stay?</h2>
+  <div class="quiz" data-type="single" data-lo="LO4" data-id="review-day-3-q1">
+    <p class="lead">Three input alerts fired last week: dust high for one day, load 10% higher every day since Tuesday's meter recalibration, temperature slowly falling over a month. Which one needs action today?</p>
+    <div class="opts">
+      <div class="opt" data-why="One day is filtered by persistence: it is weather" data-k="A">Dust, because its PSI was the largest</div>
+      <div class="opt" data-why="October cools every year and the model was trained on a full year" data-k="B">Temperature, because it moved for a month</div>
+      <div class="opt" data-ok data-k="C">Load: a step since a known change, likely skew, so call the data owner</div>
+      <div class="opt" data-why="Ignores a sustained step with a known cause" data-k="D">None: inputs do not matter until labels arrive</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> A sustained step that starts with a measurement change is skew; it changes every score until the data is fixed.</div>
+  </div>
+  <aside class="notes"><p>Answer: C. Two minutes.</p></aside>
+</section>
+
+<!-- ======================= SESSION 1 ======================= -->
+<section class="slide section" id="s1" data-auto="section" data-session="1" data-n="4">
+  <div class="kicker">Session 1</div>
+  <h1>An agent is a bundle</h1>
+  <ul class="bullets outcomes"><li>Separate the session log, the harness and the sandbox</li><li>Version an agent as one bundle with a content hash</li><li>Run the agent only from a released bundle</li></ul>
+  <div class="sess-no">01</div>
+</section>
+
+<section class="slide" data-label="Mubadir" id="meet-mubadir" data-lo="LO5" data-n="5" data-session="1">
+  <div class="kicker">The agent</div>
+  <h2>Mubadir is a model in a loop that reads a report, calls tools and writes tickets</h2>
+  <div class="flow">
+    <div class="step c-navy"><b>Report</b>"no power, account ACC-…"</div>
+    <div class="arrow">→</div>
+    <div class="step c-teal"><b>find_customer</b>feeder, region</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>get_outage</b>active, restored, pending, none</div>
+    <div class="arrow">→</div>
+    <div class="step c-coral"><b>Write</b>link, open a ticket and notify, or close</div>
+  </div>
+  <p class="small mt">Each turn the model returns one JSON action; the harness runs it through the services and logs every event.</p>
+  <aside class="notes"><p>The services are SQLite files, so tickets survive a crash as they would in production. The model is the scripted stand-in when no key works; it follows the prompt's procedure and trusts whatever the outage service says.</p></aside>
+</section>
+
+<section class="slide" data-label="Three parts" id="harness-sandbox-log" data-lo="LO5" data-n="6" data-session="1">
+  <div class="kicker">Three things people mix up</div>
+  <h2>The harness runs the loop, the sandbox limits it, the session log records it</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Harness</h4><p class="small mb0">Steps, retries, timeouts, guards: <code>harness.yaml</code> and its code.</p></div>
+    <div class="card c-cyan"><h4>Sandbox</h4><p class="small mb0">Allowed tools, readable fields, no network: <code>sandbox.yaml</code>.</p></div>
+    <div class="card c-coral"><h4>Session log</h4><p class="small mb0">What one session did. Produced by a run, never released.</p></div>
+  </div>
+  <aside class="notes"><p>Ask where "never read out a phone number" lives. It is in the prompt and in the sandbox's hidden fields: the prompt asks, the sandbox enforces.</p></aside>
+</section>
+
+<section class="slide" data-label="The bundle" id="bundle-version" data-lo="LO1 LO5" data-n="7" data-session="1">
+  <div class="kicker">Lab 4.1 · step 2</div>
+  <h2>Four files, one content version: the bundle</h2>
+  <pre class="code s" data-file="releases/mubadir-13ba248db039/manifest.json"><code class="language-json"><span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;version&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;mubadir-13ba248db039&quot;</span><span class="hljs-punctuation">,</span>
+ <span class="hljs-attr">&quot;files&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;harness.yaml&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;58774e13…&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;prompt.md&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;21280ad4…&quot;</span><span class="hljs-punctuation">,</span>
+           <span class="hljs-attr">&quot;sandbox.yaml&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;30f31ccf…&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;tools.json&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;ad9380b7…&quot;</span><span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
+ <span class="hljs-attr">&quot;released_by&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Dhafer Al-Hazzani&quot;</span><span class="hljs-punctuation">}</span></code></pre>
+  <p class="small mt">The version is a hash of the four file hashes, the same idea as Day 1's release manifest.</p>
+  <aside class="notes"><p>The model alias steady is in harness.yaml; the served model name goes into every session log, as on Day 1. The customer database and the model weights are not in the bundle.</p></aside>
+</section>
+
+<section class="slide" data-label="One schema" id="one-tool-schema" data-lo="LO1 LO5" data-n="8" data-session="1">
+  <div class="kicker">Lab 4.1 · step 3</div>
+  <h2>Adding one property to one tool moves the version</h2>
+  <div class="cols cols-2">
+    <div class="stat"><div class="big">13ba248 → fe28888</div><div class="lbl">after adding <code>customer_words</code> to create_ticket</div></div>
+    <ul class="bullets small">
+      <li>Only <code>tools.json</code> differs between the manifests.</li>
+      <li>The model now sees a different tool list: a behaviour change with no prompt edit.</li>
+      <li>So it replays the regression suite before release (Session 3).</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>Same lesson as the index refresh of Day 2: a part that does not look like code still changes behaviour.</p></aside>
+</section>
+
+<section class="slide" data-label="Run from it" id="run-from-release" data-lo="LO5" data-n="9" data-session="1">
+  <div class="kicker">Lab 4.1 · step 4, from the course's run</div>
+  <h2>Run from the released folder, and write the bundle version into every session log</h2>
+  <div class="trace s">
+    <div class="ev call"><b>find_customer</b>ACC-40000137 → feeder F-2414, Al-Wadi</div>
+    <div class="ev call"><b>get_outage</b>F-2414 → none</div>
+    <div class="ev call"><b>create_ticket</b>→ OT-31001</div>
+    <div class="ev call"><b>notify_crew</b>OT-31001 → notified</div>
+    <div class="ev final"><b>final</b>I opened ticket OT-31001 for your feeder F-2414 and sent it to the duty crew. · bundle mubadir-13ba248db039</div>
+  </div>
+  <aside class="notes"><p>The stretch refuses to start from a folder whose version is not the released one. In production the release store refuses overwrites (an object store with versioning or object lock).</p></aside>
+</section>
+
+<section class="slide" data-label="Where it goes" id="bundle-in-manifest" data-lo="LO1" data-n="10" data-session="1">
+  <div class="kicker">Closing the loop with Day 1</div>
+  <h2>The bundle version is Mubadir's line in the release manifest</h2>
+  <table class="t small">
+    <tr><th>System</th><th>What names its release</th></tr>
+    <tr><td>Fault-risk classifier</td><td>registry version behind the champion alias, data snapshot, code hash</td></tr>
+    <tr><td>Nabd</td><td>release file: prompt, model, index fingerprint, tool schemas</td></tr>
+    <tr class="hl"><td>Mubadir</td><td>bundle version: prompt, tools, harness, sandbox</td></tr>
+  </table>
+  <aside class="notes"><p>Three systems, three kinds of release unit, one manifest. The capstone's release log uses these names.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-1" data-lo="LO5" data-n="11" data-session="1">
+  <div class="kicker">Checkpoint</div>
+  <h2>A setting, not a prompt</h2>
+  <div class="quiz" data-type="single" data-lo="LO5" data-id="checkpoint-1-q1">
+    <p class="lead">A developer raises Mubadir's <code>max_steps</code> from 10 to 30 in <code>harness.yaml</code> and says no release is needed because the prompt did not change. What do you answer?</p>
+    <div class="opts">
+      <div class="opt" data-why="Treats the prompt as the only part that changes behaviour" data-k="A">Agree: only the prompt changes what the agent does</div>
+      <div class="opt" data-ok data-k="B">It is a new bundle version: harness settings change behaviour and cost</div>
+      <div class="opt" data-why="The session log records runs; it does not release anything" data-k="C">It is enough to note it in the session log</div>
+      <div class="opt" data-why="Confuses the sandbox with the harness" data-k="D">Only a sandbox change needs a release</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Three times the steps can mean three times the spend of a loop; every file of the bundle is part of the version.</div>
+  </div>
+  <aside class="notes"><p>Answer: B.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-4-1" data-auto="lab" data-lab="4.1" data-label="Lab 4.1" data-n="12" data-session="1">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 4.1 · 25 min</div><h2>Mubadir as one versioned bundle</h2><p class="lead small">Package Mubadir's prompt, tool schemas, harness settings and sandbox policy as one bundle with a content version, change one tool and watch the version move, then run the agent from the bundle.</p><a class="nb" href="../labs/D4_1_agent_bundle.ipynb">D4_1_agent_bundle.ipynb</a></div><ul class="checklist"><li>What changes Mubadir's behaviour <span class="min">5 min</span></li><li>Build the bundle and its version <span class="min">8 min</span></li><li>Change one tool schema <span class="min">6 min</span></li><li>Run the agent from the bundle <span class="min">6 min</span></li><li class="stretch">✱ Stretch: Refuse to start when the running bundle is not the released one</li></ul></div>
+  <aside class="notes"><p>Usual problems: hashing file names only; hashing files in directory order, which differs between systems (sort them); editing the released folder instead of a working copy. The files are stored with LF line endings, so the version is the same on Windows, macOS and Colab.</p></aside>
+</section>
+
+<!-- ======================= SESSION 2 ======================= -->
+<section class="slide section" id="s2" data-auto="section" data-session="2" data-n="13">
+  <div class="kicker">Session 2</div>
+  <h1>Durable execution and safe retries</h1>
+  <ul class="bullets outcomes"><li>Resume a crashed agent run from its last checkpoint</li><li>Explain why a retry after a timeout can repeat a write</li><li>Make a write tool idempotent with a key</li></ul>
+  <div class="sess-no">02</div>
+</section>
+
+<section class="slide" data-label="Two complaints" id="two-complaints" data-lo="LO5" data-n="14" data-session="2">
+  <div class="kicker">What reached Dhafer this month</div>
+  <h2>A crew sent twice to one feeder, and a session that started again from the beginning</h2>
+  <div class="cols cols-2">
+    <div class="card c-coral flat"><h4>Restart</h4><p class="small mb0">A deployment restarted the pod between creating the ticket and notifying the crew. The session started over and opened a second ticket.</p></div>
+    <div class="card c-amber flat"><h4>Retry</h4><p class="small mb0">The ticket service committed, then timed out. The harness retried and wrote again.</p></div>
+  </div>
+  <aside class="notes"><p>Two different causes with the same symptom. The fixes are different too: a checkpoint for the first, an idempotency key for the second.</p></aside>
+</section>
+
+<section class="slide" data-label="Checkpointer" id="checkpointed-graph" data-lo="LO5" data-n="15" data-session="2">
+  <div class="kicker">Durable execution</div>
+  <h2>A checkpointer saves the state after every step, under a thread id</h2>
+  <pre class="code s" data-file="Lab 4.2"><code class="language-python">g = StateGraph(Ticket)
+g.add_node(<span class="hljs-string">&quot;find_customer&quot;</span>, find_customer)   <span class="hljs-comment"># ... get_outage, create_ticket, notify_crew</span>
+g.add_edge(START, <span class="hljs-string">&quot;find_customer&quot;</span>)
+graph = g.<span class="hljs-built_in">compile</span>(checkpointer=SqliteSaver(sqlite3.connect(<span class="hljs-string">&quot;checkpoints.db&quot;</span>)))
+
+graph.invoke({<span class="hljs-string">&quot;account&quot;</span>: <span class="hljs-string">&quot;ACC-40000137&quot;</span>}, {<span class="hljs-string">&quot;configurable&quot;</span>: {<span class="hljs-string">&quot;thread_id&quot;</span>: <span class="hljs-string">&quot;S-4202&quot;</span>}})
+graph.invoke(<span class="hljs-literal">None</span>, {<span class="hljs-string">&quot;configurable&quot;</span>: {<span class="hljs-string">&quot;thread_id&quot;</span>: <span class="hljs-string">&quot;S-4202&quot;</span>}})   <span class="hljs-comment"># resume after a crash</span></code></pre>
+  <aside class="notes"><p>LangGraph with the SQLite checkpointer runs on a laptop; in production the Postgres checkpointer or a durable execution engine plays the same part. Invoking with None on the same thread resumes from the last saved step.</p></aside>
+</section>
+
+<section class="slide" data-label="Resume" id="restart-vs-resume" data-lo="LO5" data-n="16" data-session="2">
+  <div class="kicker">Lab 4.2 · step 2, from the course's run</div>
+  <h2>Restarting opened a second ticket; resuming ran only the missing step</h2>
+  <table class="t small">
+    <tr><th>After the crash before notify_crew</th><th class="num">Tickets</th><th>Notified</th></tr>
+    <tr><td>restart from the beginning</td><td class="num">2</td><td>OT-31001 no, OT-31002 yes</td></tr>
+    <tr class="hl"><td>resume the saved thread</td><td class="num">1</td><td>OT-31001 yes</td></tr>
+  </table>
+  <p class="small mt">On resume, the saved state's next step was <code>notify_crew</code>.</p>
+  <aside class="notes"><p>The restart left a ticket no crew was told about: a customer waiting on a ticket nobody works. Ask: which promise to the customer breaks?</p></aside>
+</section>
+
+<section class="slide" data-label="Timeout" id="timeout-is-not-failure" data-lo="LO5" data-n="17" data-session="2">
+  <div class="kicker">Lab 4.2 · step 3</div>
+  <h2>A timeout does not say whether the write happened</h2>
+  <div class="trace s">
+    <div class="ev call"><b>create_ticket</b>the service commits OT-31001</div>
+    <div class="ev error"><b>timeout</b>ticket service did not answer within 5 s</div>
+    <div class="ev call"><b>retry</b>create_ticket → OT-31002</div>
+    <div class="ev result"><b>notify_crew</b>OT-31002 · OT-31001 is never notified</div>
+  </div>
+  <aside class="notes"><p>A checkpoint does not help here: the retry happens inside one step. Only the service can recognise the repeat, and it needs a key to do it.</p></aside>
+</section>
+
+<section class="slide" data-label="Idempotency" id="idempotency-key" data-lo="LO5" data-n="18" data-session="2">
+  <div class="kicker">Lab 4.2 · step 4</div>
+  <h2>An idempotency key names one intended write; a repeat returns the first result</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="Lab 4.2"><code class="language-python">key = <span class="hljs-built_in">hash</span>(session_id, <span class="hljs-string">&quot;create_ticket&quot;</span>, args)
+<span class="hljs-comment"># same intent, same key, on every retry</span>
+<span class="hljs-comment"># a different report gets a different key</span></code></pre>
+    <div class="trace s">
+      <div class="ev error"><b>timeout</b>after the commit</div>
+      <div class="ev result"><b>retry</b>OT-31001, replayed: true</div>
+      <div class="ev final"><b>tickets</b>one, notified</div>
+    </div>
+  </div>
+  <aside class="notes"><p>Not the time of the call: a retry a second later would get a new key. Many payment APIs work the same way, with an idempotency key sent on each request. Every write tool needs one: create_ticket, notify_crew, close_report, update_customer_record.</p></aside>
+</section>
+
+<section class="slide" data-label="Two fixes" id="two-fixes" data-lo="LO5" data-n="19" data-session="2">
+  <div class="kicker">Which fix for which failure</div>
+  <h2>Checkpoints protect the steps between calls; keys protect the call itself</h2>
+  <div class="cols cols-2">
+    <div class="card c-teal"><h4>Checkpoint</h4><p class="small mb0">The process dies between steps. Resume from the saved state; finished steps do not run again.</p></div>
+    <div class="card c-cyan"><h4>Idempotency key</h4><p class="small mb0">The answer to one write is lost. Retry with the same key; the service does not write twice.</p></div>
+  </div>
+  <div class="callout tip small mt"><b>Both, for every agent that writes.</b> The capstone's agent incident is a duplicate write.</div>
+  <aside class="notes"><p>Stretch: a second process reads the crashed thread's state from SQLite and sees the ticket it already holds.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-2" data-lo="LO5" data-n="20" data-session="2">
+  <div class="kicker">Checkpoint</div>
+  <h2>Checkpointed, still duplicated</h2>
+  <div class="quiz" data-type="single" data-lo="LO5" data-id="checkpoint-2-q1">
+    <p class="lead">Mubadir's flow now has a checkpointer. A ticket service timeout still produced two tickets for one report. Why?</p>
+    <div class="opts">
+      <div class="opt" data-why="The checkpoint was there; it does not cover a retry inside a step" data-k="A">The checkpointer was not saving</div>
+      <div class="opt" data-why="Durability of the database is not the issue: both writes were kept" data-k="B">The ticket database lost the first ticket</div>
+      <div class="opt" data-ok data-k="C">The retry ran inside one step, and the service had no key to recognise it</div>
+      <div class="opt" data-why="A model choice cannot make the service write twice" data-k="D">The model asked for two tickets</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The service committed and its answer was lost; only an idempotency key lets it return the first ticket.</div>
+  </div>
+  <aside class="notes"><p>Answer: C.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-4-2" data-auto="lab" data-lab="4.2" data-label="Lab 4.2" data-n="21" data-session="2">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 4.2 · 25 min</div><h2>Crash, resume, and no duplicate tickets</h2><p class="lead small">Run Mubadir's ticket flow as a checkpointed graph, crash it mid-task and resume, then reproduce the duplicate ticket a retry creates and fix the tool with an idempotency key.</p><a class="nb" href="../labs/D4_2_durable_retries.ipynb">D4_2_durable_retries.ipynb</a></div><ul class="checklist"><li>The ticket graph with a checkpointer <span class="min">6 min</span></li><li>Crash mid-task and resume <span class="min">6 min</span></li><li>A retry after a timeout: two tickets <span class="min">6 min</span></li><li>An idempotency key: one ticket <span class="min">7 min</span></li><li class="stretch">✱ Stretch: Resume the session from a second process</li></ul></div>
+  <aside class="notes"><p>Usual problems: invoking with the original input instead of None, which starts over on the same thread; a new thread id on resume; an idempotency key that includes the time. Delete artifacts/D4_2 between attempts: the ticket services are files.</p></aside>
+</section>
+
+<!-- ======================= SESSION 3 ======================= -->
+<section class="slide section" id="s3" data-auto="section" data-session="3" data-n="22">
+  <div class="kicker">Session 3</div>
+  <h1>Replay to reproduce incidents</h1>
+  <ul class="bullets outcomes"><li>Replay a recorded session deterministically</li><li>Find the cause of an incident in the replayed trace</li><li>Add the incident to the regression suite</li></ul>
+  <div class="sess-no">03</div>
+</section>
+
+<section class="slide" data-label="The incident" id="inc-0412" data-lo="LO5" data-n="23" data-session="3">
+  <div class="kicker">INC-0412 · invented for the course</div>
+  <h2>Mubadir told a customer in Al-Jabal that power was back; it never was</h2>
+  <div class="cols cols-2">
+    <div class="chat">
+      <div class="msg user"><span class="who">Customer</span>Salam, my house has had no power for two hours. Account ACC-40005754.</div>
+      <div class="msg ai bad"><span class="who">Mubadir</span>Power is restored on your feeder F-3350. If you are still without power, reply to this message.</div>
+    </div>
+    <div class="card c-coral flat"><h4>40 minutes later</h4><p class="small mb0">The customer calls again. The control room confirms the outage never ended. The report had been closed.</p></div>
+  </div>
+  <aside class="notes"><p>The service note says the outage service's read replica was lagging during a database failover. Ask: where would you start? Most say the model.</p></aside>
+</section>
+
+<section class="slide" data-label="The trace" id="read-the-trace" data-lo="LO5" data-n="24" data-session="3">
+  <div class="kicker">Lab 4.3 · step 1</div>
+  <h2>Step 2 returned "restored", 140 minutes old, and the agent closed the report on it</h2>
+  <div class="trace s">
+    <div class="ev call"><b>1 find_customer</b>→ F-3350, Al-Jabal</div>
+    <div class="ev error"><b>2 get_outage</b>→ restored, ticket OT-30412, age 140 minutes</div>
+    <div class="ev call"><b>3 close_report</b>→ closed</div>
+    <div class="ev final"><b>4 final</b>Power is restored on your feeder F-3350.</div>
+  </div>
+  <aside class="notes"><p>The model did what its prompt says. The data was stale, and nothing in the harness asked how old it was. The fix belongs where the tool runs.</p></aside>
+</section>
+
+<section class="slide" data-label="Replay" id="replay-not-rerun" data-lo="LO5" data-n="25" data-session="3">
+  <div class="kicker">Lab 4.3 · step 2</div>
+  <h2>Replay from the recording, not a rerun against today's services</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>The recording holds every model output and every tool response.</li>
+      <li>Replay feeds them back through today's harness code: no model, no services.</li>
+      <li>The same wrong answer comes back every time.</li>
+    </ul>
+    <div class="card c-amber flat"><h4>A rerun would not</h4><p class="small mb0">The replica has caught up and a hosted model can answer differently: the failure would hide.</p></div>
+  </div>
+  <aside class="notes"><p>This is why the session log keeps the tool results and not only the model's text, and why it is redacted and retained under the rules of Day 3 Session 3.</p></aside>
+</section>
+
+<section class="slide" data-label="Guard" id="freshness-guard" data-lo="LO5" data-n="26" data-session="3">
+  <div class="kicker">Lab 4.3 · step 3</div>
+  <h2>A guard in the harness blocks a close on a stale status</h2>
+  <pre class="code s" data-file="Lab 4.3"><code class="language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">freshness_guard</span>(<span class="hljs-params">action, history</span>):
+    <span class="hljs-keyword">if</span> action[<span class="hljs-string">&quot;tool&quot;</span>] != <span class="hljs-string">&quot;close_report&quot;</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>
+    last = latest get_outage result <span class="hljs-keyword">in</span> history
+    <span class="hljs-keyword">if</span> last[<span class="hljs-string">&quot;status&quot;</span>] != <span class="hljs-string">&quot;restored&quot;</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;not restored&quot;</span>
+    <span class="hljs-keyword">if</span> last[<span class="hljs-string">&quot;age_minutes&quot;</span>] &gt; <span class="hljs-number">15</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-string">f&quot;status is <span class="hljs-subst">{last[<span class="hljs-string">&#x27;age_minutes&#x27;</span>]}</span> minutes old: confirm with the control room&quot;</span></code></pre>
+  <p class="small mt">Replayed with the guard: blocked at step 3, "status is 140 minutes old (limit 15)".</p>
+  <aside class="notes"><p>A guard runs on every call and is tested by replay; a prompt instruction is followed most of the time. The 15 minutes is the course's assumption: set it with the control room.</p></aside>
+</section>
+
+<section class="slide" data-label="Suite" id="regression-suite" data-lo="LO5" data-n="27" data-session="3">
+  <div class="kicker">Lab 4.3 · step 4, from the course's run</div>
+  <h2>The incident becomes a sixth case; the fix keeps the other five passing</h2>
+  <table class="t small">
+    <tr><th>Case</th><th>Without the guard</th><th>With the guard</th></tr>
+    <tr><td>new outage, known outage, record change, unknown account</td><td>pass</td><td>pass</td></tr>
+    <tr><td>restored 6 minutes ago</td><td>pass</td><td>pass</td></tr>
+    <tr class="hl"><td>INC-0412: restored 140 minutes ago</td><td>fail</td><td>pass</td></tr>
+  </table>
+  <aside class="notes"><p>The fresh "restored" case is the one that proves the guard is not simply blocking every close. The suite runs on every change to the bundle.</p></aside>
+</section>
+
+<section class="slide" data-label="New bundle" id="suite-new-bundle" data-lo="LO5" data-n="28" data-session="3">
+  <div class="kicker">Stretch · the suite against a new bundle</div>
+  <h2>A bundle without close_report changes exactly one case, as intended</h2>
+  <ul class="bullets small">
+    <li>The sandbox no longer allows <code>close_report</code>: closing goes to a person.</li>
+    <li>Replayed suite: "restored 6 minutes ago" now fails, everything else passes.</li>
+    <li>Update that case's expectation in the same change, with the reason.</li>
+  </ul>
+  <aside class="notes"><p>A suite that changes is fine when the change is the one the release intends, and written down. An unexplained change is a regression.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-3" data-lo="LO5" data-n="29" data-session="3">
+  <div class="kicker">Checkpoint</div>
+  <h2>Reproduce it</h2>
+  <div class="quiz" data-type="single" data-lo="LO5" data-id="checkpoint-3-q1">
+    <p class="lead">The team wants to reproduce INC-0412 by sending the same customer report to Mubadir today. Why will that probably not show the failure?</p>
+    <div class="opts">
+      <div class="opt" data-ok data-k="A">The replica has caught up and the model may answer differently: only the recording holds what happened</div>
+      <div class="opt" data-why="The account still exists; the data has simply moved on" data-k="B">The customer's account has been deleted</div>
+      <div class="opt" data-why="A guard that is not yet written cannot block anything" data-k="C">The new guard will block it</div>
+      <div class="opt" data-why="Agents are not random by design; the inputs changed" data-k="D">Agents never behave the same way twice</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Replay uses the stored model outputs and tool responses, so the same failure returns every time.</div>
+  </div>
+  <aside class="notes"><p>Answer: A.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-4-3" data-auto="lab" data-lab="4.3" data-label="Lab 4.3" data-n="30" data-session="3">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 4.3 · 25 min</div><h2>Replay incident INC-0412</h2><p class="lead small">Replay the recorded session in which Mubadir told a customer that power was back while the outage was live, find the cause in the trace, fix the harness and add the case to the regression suite.</p><a class="nb" href="../labs/D4_3_replay_incident.ipynb">D4_3_replay_incident.ipynb</a></div><ul class="checklist"><li>Read the recorded trace <span class="min">5 min</span></li><li>Replay it: the same wrong answer <span class="min">7 min</span></li><li>Fix the harness <span class="min">7 min</span></li><li>The new regression case and the suite <span class="min">6 min</span></li><li class="stretch">✱ Stretch: Replay the whole suite against a new bundle</li></ul></div>
+  <aside class="notes"><p>Usual problems: a guard that blocks every close_report (the fresh case catches it); reading the first get_outage result instead of the latest; adding the case to data/replay instead of the copy in artifacts. Ask early finishers to draft the post-incident note: cause, fix, case, owner.</p></aside>
+</section>
+
+<!-- ======================= SESSION 4 ======================= -->
+<section class="slide section" id="s4" data-auto="section" data-session="4" data-n="31">
+  <div class="kicker">Session 4</div>
+  <h1>Budgets, gateways and kill switches</h1>
+  <ul class="bullets outcomes"><li>Set step and spend limits at a gateway</li><li>Stop a runaway agent with a kill switch</li><li>Keep the stopped sessions and hand them to a person</li></ul>
+  <div class="sess-no">04</div>
+</section>
+
+<section class="slide" data-label="Runaway" id="runaway-session" data-lo="LO5 LO6" data-n="32" data-session="4">
+  <div class="kicker">14 October</div>
+  <h2>The outage service answered "pending" and Mubadir asked again 79 times</h2>
+  <div class="cols cols-2">
+    <div class="stat"><div class="big">80 calls · 0.169 SAR</div><div class="lbl">one session with no limits, from the course's run</div></div>
+    <ul class="bullets small">
+      <li>Input tokens per call grew from 127 to 3,609: each call resends the conversation.</li>
+      <li>The cost of a loop grows with the square of its length.</li>
+      <li>This is Day 2's expensive days for Mubadir.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>The version running that day had no step limit in its harness. Prices are the course's assumptions; the shape is what matters.</p></aside>
+</section>
+
+<section class="slide" data-label="Gateway" id="gateway-policy" data-lo="LO5 LO6" data-n="33" data-session="4">
+  <div class="kicker">Lab 4.4 · step 2</div>
+  <h2>Every model call passes the gateway, which checks steps, session spend and the day's budget</h2>
+  <pre class="code s" data-file="Lab 4.4"><code class="language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">policy</span>(<span class="hljs-params">state</span>):
+    <span class="hljs-keyword">if</span> state[<span class="hljs-string">&quot;session_steps&quot;</span>] &gt;= <span class="hljs-number">12</span>:      <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;step limit&quot;</span>
+    <span class="hljs-keyword">if</span> state[<span class="hljs-string">&quot;session_spend&quot;</span>] &gt;= <span class="hljs-number">0.01</span>:    <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;session spend limit&quot;</span>
+    <span class="hljs-keyword">if</span> state[<span class="hljs-string">&quot;day_spend&quot;</span>] &gt;= <span class="hljs-number">2.90</span>:        <span class="hljs-keyword">return</span> <span class="hljs-string">&quot;daily budget&quot;</span>   <span class="hljs-comment"># 90 SAR / 31 days</span></code></pre>
+  <p class="small mt">The same runaway session: stopped by the gateway after 12 calls, 0.0057 SAR.</p>
+  <aside class="notes"><p>Why at the gateway and not only in max_steps: the gateway sees every session of every version, including a harness with a bug or a bundle that raised its limit, and it sees the money.</p></aside>
+</section>
+
+<section class="slide" data-label="Kill switch" id="kill-switch" data-lo="LO5" data-n="34" data-session="4">
+  <div class="kicker">Lab 4.4 · step 3, from the course's run</div>
+  <h2>After two sessions hit the step limit, one switch stopped the version</h2>
+  <div class="trace s">
+    <div class="ev error"><b>S-4411</b>stopped: step limit, 12 calls</div>
+    <div class="ev error"><b>S-4412</b>stopped: step limit, 12 calls</div>
+    <div class="ev guard"><b>kill switch</b>mubadir-2026.10.2, by Dhafer Al-Hazzani</div>
+    <div class="ev guard"><b>S-4413 to S-4416</b>refused before the first call</div>
+  </div>
+  <p class="small mt">24 model calls instead of 72: the switch saved 48.</p>
+  <aside class="notes"><p>The switch works on a version, not on the agent: the previous version or a person keeps serving. Who may turn it on is decided before the incident: the release owner and the control-room duty engineer.</p></aside>
+</section>
+
+<section class="slide" data-label="Handover" id="sessions-kept" data-lo="LO5" data-n="35" data-session="4">
+  <div class="kicker">Lab 4.4 · step 4</div>
+  <h2>Stopping the agent must not drop the customers it was serving</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>Every session is in the store with its messages and status.</li>
+      <li>Six stopped sessions go to customer care with the account, steps, spend and last tool result.</li>
+      <li>The same sessions can be replayed for the post-incident note.</li>
+    </ul>
+    <div class="stat"><div class="big">6 of 6</div><div class="lbl">stopped sessions handed over, none lost</div></div>
+  </div>
+  <aside class="notes"><p>The handover file holds the account number but no phone number or name: customer care looks them up in its own system.</p></aside>
+</section>
+
+<section class="slide" data-label="LiteLLM" id="litellm-budgets" data-lo="LO6" data-n="36" data-session="4">
+  <div class="kicker">Stretch · the same limits in a proxy</div>
+  <h2>LiteLLM puts budgets on keys, users and teams; one key per version makes the switch a deletion</h2>
+  <pre class="code s" data-file="POST /key/generate"><code class="language-json"><span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;models&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-string">&quot;steady&quot;</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;max_budget&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">2.9</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;budget_duration&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;1d&quot;</span><span class="hljs-punctuation">,</span>
+ <span class="hljs-attr">&quot;metadata&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span><span class="hljs-attr">&quot;agent&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;mubadir&quot;</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;version&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;mubadir-2026.10.2&quot;</span><span class="hljs-punctuation">}</span><span class="hljs-punctuation">}</span></code></pre>
+  <p class="small mt">Budgets need the proxy's database (PostgreSQL); rate limits answer HTTP 429. Per-session step limits stay in the harness and the gateway policy.</p>
+  <aside class="notes"><p>Sources: LiteLLM documentation on budgets and rate limits (checked November 2026). The configuration in the lab is not run: it needs a database and a proxy. Tool names are examples, not endorsements.</p></aside>
+</section>
+
+<section class="slide" data-label="Runbook" id="agent-runbook" data-lo="LO5" data-n="37" data-session="4">
+  <div class="kicker">Runbooks · recap from AE-205, now for three systems</div>
+  <h2>A runbook says how to detect, who decides, how to roll back and how to stop</h2>
+  <table class="t small">
+    <tr><th>System</th><th>Detect</th><th>Decide</th><th>Roll back</th><th>Stop</th></tr>
+    <tr><td>Classifier</td><td>contract report, drift alert, AUC by region</td><td>Lamya</td><td>move the champion alias back</td><td>pause the retraining trigger</td></tr>
+    <tr><td>Nabd</td><td>canary analysis, online evaluation, spans</td><td>Dhafer, with Saqer</td><td>abort the rollout, redeploy the last digest</td><td>pin the previous release</td></tr>
+    <tr class="hl"><td>Mubadir</td><td>gateway stops, spend per resolved report</td><td>Dhafer or Mutab</td><td>release the previous bundle</td><td>kill switch for the version, then the handover</td></tr>
+  </table>
+  <div class="callout tip small mt"><b>Written before the incident.</b> Each cell names a signal or a command from this week's labs. The capstone's runbook has this shape.</div>
+  <aside class="notes"><p>AE-205 wrote a runbook for two alerts of one service. Here each row is a system and each cell points at something the participants built: the validation report and the regional gate (Day 1), the canary triggers and the digest (Day 2), the monitors (Day 3), the gateway policy, the kill switch and the handover (today). Ask each table to fill the Mubadir row for a second failure, the duplicate ticket: detect by two tickets on one report, roll back to the bundle before the change, fix with an idempotency key. Runbook and reproducibility are 15 of the rubric's 100.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-4" data-lo="LO5" data-n="38" data-session="4">
+  <div class="kicker">Checkpoint</div>
+  <h2>Six sessions looping</h2>
+  <div class="quiz" data-type="single" data-lo="LO5" data-id="checkpoint-4-q1">
+    <p class="lead">Every session of Mubadir's new version loops on the same pending status. Each stops at the step limit. What does the duty engineer do?</p>
+    <div class="opts">
+      <div class="opt" data-why="Pays for every session's loop when the cause is shared" data-k="A">Nothing: the step limit already stops each session</div>
+      <div class="opt" data-why="Stops service for everyone, including the working version" data-k="B">Stop all of Mubadir, every version</div>
+      <div class="opt" data-why="Raises the cost of each loop and fixes nothing" data-k="C">Raise the step limit so sessions can finish</div>
+      <div class="opt" data-ok data-k="D">Turn on the kill switch for that version and hand its sessions to people</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> When the cause is shared, one switch per version stops the waste at once and keeps the customers served by people or the previous version.</div>
+  </div>
+  <aside class="notes"><p>Answer: D.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-4-4" data-auto="lab" data-lab="4.4" data-label="Lab 4.4" data-n="39" data-session="4">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 4.4 · 25 min</div><h2>Limits and a kill switch at the gateway</h2><p class="lead small">Let a runaway Mubadir session loop without limits, then set step and spend limits at the gateway, stop the agent version with the kill switch and hand its sessions to a person without losing them.</p><a class="nb" href="../labs/D4_4_budgets_killswitch.ipynb">D4_4_budgets_killswitch.ipynb</a></div><ul class="checklist"><li>The runaway session without limits <span class="min">4 min</span></li><li>Step and spend limits <span class="min">8 min</span></li><li>The kill switch <span class="min">7 min</span></li><li>Sessions kept and handed over <span class="min">6 min</span></li><li class="stretch">✱ Stretch: The same limits as a LiteLLM proxy configuration</li></ul></div>
+  <aside class="notes"><p>Usual problems: a policy that checks after the call instead of before; killing the agent name instead of the version; a handover that reads only finished sessions. The capstone kickoff follows this lab.</p></aside>
+</section>
+
+<!-- ======================= CLOSING AND CAPSTONE KICKOFF ======================= -->
+<section class="slide" data-label="Recap" id="day-4-recap" data-n="40" data-session="4">
+  <div class="kicker">Day 4 recap</div>
+  <h2>A bundle you can name, a run that survives a crash, an incident you can replay, an agent you can stop</h2>
+  <div class="cols cols-4 gap-s">
+    <div class="card c-teal"><h4>Bundle</h4><p class="small mb0">four files, one version</p></div>
+    <div class="card c-cyan"><h4>Durable</h4><p class="small mb0">checkpoint and key</p></div>
+    <div class="card c-amber"><h4>Replay</h4><p class="small mb0">guard and case</p></div>
+    <div class="card c-coral"><h4>Stop</h4><p class="small mb0">limits, switch, handover</p></div>
+  </div>
+  <aside class="notes"><p>Agent operations are 20 of the rubric's 100.</p></aside>
+</section>
+
+<section class="slide" data-label="Capstone" id="capstone-kickoff" data-n="41" data-session="4">
+  <div class="kicker">Capstone kickoff</div>
+  <h2>A release week at Wahaj: each event stopped, shipped or rolled back on evidence</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Monday and Tuesday</h4><p class="small mb0">The scheduled retrain meets the corrupt September batch, then the corrected re-delivery: valid, and does it pass the gate?</p></div>
+    <div class="card c-cyan"><h4>Wednesday</h4><p class="small mb0">The provider updates Nabd's model: gate, canary, ship or roll back.</p></div>
+    <div class="card c-coral"><h4>Thursday</h4><p class="small mb0">A Mubadir incident: replay, fix, add the case, keep the sessions.</p></div>
+  </div>
+  <p class="small mt">The events, their data and a starter are in <code>labs/capstone/</code>. Submit a public repository with the pipeline logs, the release log, the runbook and timestamped traces.</p>
+  <aside class="notes"><p>Walk through labs/capstone/README.md: the events, the minimum requirements, the rubric and the timeline. Each participant runs the starter once before leaving today, so problems with the environment show up now.</p></aside>
+</section>
+
+<section class="slide dark" data-label="Tomorrow" id="tomorrow-capstone" data-n="42" data-session="4">
+  <div class="kicker">Tomorrow · Day 5</div>
+  <h2>Capstone: defend your release week for eight minutes</h2>
+  <p class="lead">Show the release log and the runbook, then diagnose one fault the assessor injects, live, from your traces and logs.</p>
+  <aside class="notes"><p>Remind participants to keep timestamps on every trace and run log: they are the evidence of authorship together with the defence.</p></aside>
+</section>
+</div>
+<script type="application/json" id="academy-data">{"v":1,"engine":"1.0.0","build":{"at":"2026-11-15T16:00:10Z","version":"2027.1.0","commit":"42f68a3"},"course":{"id":"ae-305","code":"AE-305","title":"Operating Machine Learning and Language Model Systems","track":"ai-engineering","lang":"en","dir":"ltr","url":"https://sdaiaacademy.github.io/ae-305/","repo":"SDAIAAcademy/ae-305","home":"../index.html"},"deck":{"id":"day4","kind":"day","day":4,"label":"Day 4","title":"Operate agents","prev":"day3.html","next":"capstone.html","md":"day4.md","alt":{}},"sessions":[{"n":1,"label":"Session 1","title":"An agent is a bundle","slide":"s1","outcomes":["Separate the session log, the harness and the sandbox","Version an agent as one bundle with a content hash","Run the agent only from a released bundle"],"minutes":50,"lab":{"id":"4.1","title":"Mubadir as one versioned bundle","minutes":25,"href":"../labs/D4_1_agent_bundle.ipynb"}},{"n":2,"label":"Session 2","title":"Durable execution and safe retries","slide":"s2","outcomes":["Resume a crashed agent run from its last checkpoint","Explain why a retry after a timeout can repeat a write","Make a write tool idempotent with a key"],"minutes":50,"lab":{"id":"4.2","title":"Crash, resume, and no duplicate tickets","minutes":25,"href":"../labs/D4_2_durable_retries.ipynb"}},{"n":3,"label":"Session 3","title":"Replay to reproduce incidents","slide":"s3","outcomes":["Replay a recorded session deterministically","Find the cause of an incident in the replayed trace","Add the incident to the regression suite"],"minutes":50,"lab":{"id":"4.3","title":"Replay incident INC-0412","minutes":25,"href":"../labs/D4_3_replay_incident.ipynb"}},{"n":4,"label":"Session 4","title":"Budgets, gateways and kill switches","slide":"s4","outcomes":["Set step and spend limits at a gateway","Stop a runaway agent with a kill switch","Keep the stopped sessions and hand them to a person"],"minutes":50,"lab":{"id":"4.4","title":"Limits and a kill switch at the gateway","minutes":25,"href":"../labs/D4_4_budgets_killswitch.ipynb"}}],"slides":[{"id":"title","n":1,"title":"Operate agents","kind":"title","session":0,"hash":"cc14465f","md":"#### [day4#title] Operate agents\n\n*SDAIA Academy · Operating Machine Learning and Language Model Systems*\n\nDay 4: The agent as a versioned bundle, durable and idempotent, replayed when it fails and stopped when it runs away\n\nAI Engineering Track · 4 teaching days + capstone day · 4 sessions · 4 labs · AE-305","notes":"The last teaching day is about Mubadir, the outage-ticket agent: what its release is, how it survives a crash, how an incident is reproduced, and how it is stopped. The capstone starts after Session 4.","minutes":null,"lo":[]},{"id":"agenda","n":2,"title":"Operate agents","kind":"content","session":0,"hash":"188ba9ef","md":"#### [day4#agenda] Operate agents\n\n*Today*\n\n- **Session 1 · An agent is a bundle**: Prompt, tools, harness settings and sandbox policy are versioned together, apart from the session log\n- **Session 2 · Durable execution and safe retries**: Checkpoints let a crashed run resume; idempotency keys make a retry safe\n- **Session 3 · Replay to reproduce incidents**: Recorded model and tool responses make an incident reproducible and turn it into a regression case\n- **Session 4 · Budgets, gateways and kill switches**: Step and spend limits at the gateway, a kill switch per agent version, and sessions that survive the stop","notes":"","minutes":null,"lo":[]},{"id":"review-day-3","n":3,"title":"Which alarm should stay?","kind":"quiz","session":0,"hash":"17313761","md":"#### [day4#review-day-3] Which alarm should stay?\n\n*Review of Day 3*\n\n**Question:** Three input alerts fired last week: dust high for one day, load 10% higher every day since Tuesday's meter recalibration, temperature slowly falling over a month. Which one needs action today?\n\n- A. Dust, because its PSI was the largest\n- B. Temperature, because it moved for a month\n- C. Load: a step since a known change, likely skew, so call the data owner\n- D. None: inputs do not matter until labels arrive","notes":"Answer: C. Two minutes.","minutes":null,"lo":["LO4"]},{"id":"s1","n":4,"title":"An agent is a bundle","kind":"section","session":1,"hash":"6a8470df","md":"#### [day4#s1] An agent is a bundle\n\n*Session 1*\n\n- Separate the session log, the harness and the sandbox\n- Version an agent as one bundle with a content hash\n- Run the agent only from a released bundle","notes":"","minutes":null,"lo":["LO1","LO5"]},{"id":"meet-mubadir","n":5,"title":"Mubadir is a model in a loop that reads a report, calls tools and writes tickets","kind":"content","session":1,"hash":"36becfbd","md":"#### [day4#meet-mubadir] Mubadir is a model in a loop that reads a report, calls tools and writes tickets\n\n*The agent*\n\n1. **Report** \"no power, account ACC-…\"\n2. **find_customer** feeder, region\n3. **get_outage** active, restored, pending, none\n4. **Write** link, open a ticket and notify, or close\n\nEach turn the model returns one JSON action; the harness runs it through the services and logs every event.","notes":"The services are SQLite files, so tickets survive a crash as they would in production. The model is the scripted stand-in when no key works; it follows the prompt's procedure and trusts whatever the outage service says.","minutes":null,"lo":["LO5"]},{"id":"harness-sandbox-log","n":6,"title":"The harness runs the loop, the sandbox limits it, the session log records it","kind":"content","session":1,"hash":"1f6e3c96","md":"#### [day4#harness-sandbox-log] The harness runs the loop, the sandbox limits it, the session log records it\n\n*Three things people mix up*\n\n- **Harness.** Steps, retries, timeouts, guards: `harness.yaml` and its code.\n- **Sandbox.** Allowed tools, readable fields, no network: `sandbox.yaml`.\n- **Session log.** What one session did. Produced by a run, never released.","notes":"Ask where \"never read out a phone number\" lives. It is in the prompt and in the sandbox's hidden fields: the prompt asks, the sandbox enforces.","minutes":null,"lo":["LO5"]},{"id":"bundle-version","n":7,"title":"Four files, one content version: the bundle","kind":"content","session":1,"hash":"6d2de12f","md":"#### [day4#bundle-version] Four files, one content version: the bundle\n\n*Lab 4.1 · step 2*\n\n```json\n// file: releases/mubadir-13ba248db039/manifest.json\n{\"version\": \"mubadir-13ba248db039\",\n \"files\": {\"harness.yaml\": \"58774e13…\", \"prompt.md\": \"21280ad4…\",\n           \"sandbox.yaml\": \"30f31ccf…\", \"tools.json\": \"ad9380b7…\"},\n \"released_by\": \"Dhafer Al-Hazzani\"}\n```\n\nThe version is a hash of the four file hashes, the same idea as Day 1's release manifest.","notes":"The model alias steady is in harness.yaml; the served model name goes into every session log, as on Day 1. The customer database and the model weights are not in the bundle.","minutes":null,"lo":["LO1","LO5"]},{"id":"one-tool-schema","n":8,"title":"Adding one property to one tool moves the version","kind":"content","session":1,"hash":"bdc298e7","md":"#### [day4#one-tool-schema] Adding one property to one tool moves the version\n\n*Lab 4.1 · step 3*\n\n**13ba248 → fe28888** after adding `customer_words` to create_ticket\n\n- Only `tools.json` differs between the manifests.\n- The model now sees a different tool list: a behaviour change with no prompt edit.\n- So it replays the regression suite before release (Session 3).","notes":"Same lesson as the index refresh of Day 2: a part that does not look like code still changes behaviour.","minutes":null,"lo":["LO1","LO5"]},{"id":"run-from-release","n":9,"title":"Run from the released folder, and write the bundle version into every session log","kind":"content","session":1,"hash":"65a1a5ef","md":"#### [day4#run-from-release] Run from the released folder, and write the bundle version into every session log\n\n*Lab 4.1 · step 4, from the course's run*\n\n- find_customer: ACC-40000137 → feeder F-2414, Al-Wadi\n- get_outage: F-2414 → none\n- create_ticket: → OT-31001\n- notify_crew: OT-31001 → notified\n- final: I opened ticket OT-31001 for your feeder F-2414 and sent it to the duty crew. · bundle mubadir-13ba248db039","notes":"The stretch refuses to start from a folder whose version is not the released one. In production the release store refuses overwrites (an object store with versioning or object lock).","minutes":null,"lo":["LO5"]},{"id":"bundle-in-manifest","n":10,"title":"The bundle version is Mubadir's line in the release manifest","kind":"content","session":1,"hash":"b184e927","md":"#### [day4#bundle-in-manifest] The bundle version is Mubadir's line in the release manifest\n\n*Closing the loop with Day 1*\n\n| System | What names its release |\n| --- | --- |\n| Fault-risk classifier | registry version behind the champion alias, data snapshot, code hash |\n| Nabd | release file: prompt, model, index fingerprint, tool schemas |\n| Mubadir | bundle version: prompt, tools, harness, sandbox |","notes":"Three systems, three kinds of release unit, one manifest. The capstone's release log uses these names.","minutes":null,"lo":["LO1"]},{"id":"checkpoint-1","n":11,"title":"A setting, not a prompt","kind":"quiz","session":1,"hash":"ed0a86b1","md":"#### [day4#checkpoint-1] A setting, not a prompt\n\n*Checkpoint*\n\n**Question:** A developer raises Mubadir's `max_steps` from 10 to 30 in `harness.yaml` and says no release is needed because the prompt did not change. What do you answer?\n\n- A. Agree: only the prompt changes what the agent does\n- B. It is a new bundle version: harness settings change behaviour and cost\n- C. It is enough to note it in the session log\n- D. Only a sandbox change needs a release","notes":"Answer: B.","minutes":null,"lo":["LO5"]},{"id":"lab-4-1","n":12,"title":"Mubadir as one versioned bundle","kind":"lab","session":1,"hash":"d380adb3","md":"#### [day4#lab-4-1] Mubadir as one versioned bundle\n\nLab 4.1 · 25 min\n\nPackage Mubadir's prompt, tool schemas, harness settings and sandbox policy as one bundle with a content version, change one tool and watch the version move, then run the agent from the bundle.\n\n[D4_1_agent_bundle.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D4_1_agent_bundle.ipynb)\n\n- [ ] What changes Mubadir's behaviour (5 min)\n- [ ] Build the bundle and its version (8 min)\n- [ ] Change one tool schema (6 min)\n- [ ] Run the agent from the bundle (6 min)\n- [ ] ✱ Stretch: Refuse to start when the running bundle is not the released one","notes":"Usual problems: hashing file names only; hashing files in directory order, which differs between systems (sort them); editing the released folder instead of a working copy. The files are stored with LF line endings, so the version is the same on Windows, macOS and Colab.","minutes":null,"lo":[]},{"id":"s2","n":13,"title":"Durable execution and safe retries","kind":"section","session":2,"hash":"ebe4f65a","md":"#### [day4#s2] Durable execution and safe retries\n\n*Session 2*\n\n- Resume a crashed agent run from its last checkpoint\n- Explain why a retry after a timeout can repeat a write\n- Make a write tool idempotent with a key","notes":"","minutes":null,"lo":["LO5"]},{"id":"two-complaints","n":14,"title":"A crew sent twice to one feeder, and a session that started again from the beginning","kind":"content","session":2,"hash":"43cdfb6f","md":"#### [day4#two-complaints] A crew sent twice to one feeder, and a session that started again from the beginning\n\n*What reached Dhafer this month*\n\n- **Restart.** A deployment restarted the pod between creating the ticket and notifying the crew. The session started over and opened a second ticket.\n- **Retry.** The ticket service committed, then timed out. The harness retried and wrote again.","notes":"Two different causes with the same symptom. The fixes are different too: a checkpoint for the first, an idempotency key for the second.","minutes":null,"lo":["LO5"]},{"id":"checkpointed-graph","n":15,"title":"A checkpointer saves the state after every step, under a thread id","kind":"content","session":2,"hash":"04e945a8","md":"#### [day4#checkpointed-graph] A checkpointer saves the state after every step, under a thread id\n\n*Durable execution*\n\n```python\n# file: Lab 4.2\ng = StateGraph(Ticket)\ng.add_node(\"find_customer\", find_customer)   # ... get_outage, create_ticket, notify_crew\ng.add_edge(START, \"find_customer\")\ngraph = g.compile(checkpointer=SqliteSaver(sqlite3.connect(\"checkpoints.db\")))\n\ngraph.invoke({\"account\": \"ACC-40000137\"}, {\"configurable\": {\"thread_id\": \"S-4202\"}})\ngraph.invoke(None, {\"configurable\": {\"thread_id\": \"S-4202\"}})   # resume after a crash\n```","notes":"LangGraph with the SQLite checkpointer runs on a laptop; in production the Postgres checkpointer or a durable execution engine plays the same part. Invoking with None on the same thread resumes from the last saved step.","minutes":null,"lo":["LO5"]},{"id":"restart-vs-resume","n":16,"title":"Restarting opened a second ticket; resuming ran only the missing step","kind":"content","session":2,"hash":"6688acf3","md":"#### [day4#restart-vs-resume] Restarting opened a second ticket; resuming ran only the missing step\n\n*Lab 4.2 · step 2, from the course's run*\n\n| After the crash before notify_crew | Tickets | Notified |\n| --- | --- | --- |\n| restart from the beginning | 2 | OT-31001 no, OT-31002 yes |\n| resume the saved thread | 1 | OT-31001 yes |\n\nOn resume, the saved state's next step was `notify_crew`.","notes":"The restart left a ticket no crew was told about: a customer waiting on a ticket nobody works. Ask: which promise to the customer breaks?","minutes":null,"lo":["LO5"]},{"id":"timeout-is-not-failure","n":17,"title":"A timeout does not say whether the write happened","kind":"content","session":2,"hash":"0c89ee5e","md":"#### [day4#timeout-is-not-failure] A timeout does not say whether the write happened\n\n*Lab 4.2 · step 3*\n\n- create_ticket: the service commits OT-31001\n- timeout: ticket service did not answer within 5 s\n- retry: create_ticket → OT-31002\n- notify_crew: OT-31002 · OT-31001 is never notified","notes":"A checkpoint does not help here: the retry happens inside one step. Only the service can recognise the repeat, and it needs a key to do it.","minutes":null,"lo":["LO5"]},{"id":"idempotency-key","n":18,"title":"An idempotency key names one intended write; a repeat returns the first result","kind":"content","session":2,"hash":"a4be03f9","md":"#### [day4#idempotency-key] An idempotency key names one intended write; a repeat returns the first result\n\n*Lab 4.2 · step 4*\n\n```python\n# file: Lab 4.2\nkey = hash(session_id, \"create_ticket\", args)\n# same intent, same key, on every retry\n# a different report gets a different key\n```\n\n- timeout: after the commit\n- retry: OT-31001, replayed: true\n- tickets: one, notified","notes":"Not the time of the call: a retry a second later would get a new key. Many payment APIs work the same way, with an idempotency key sent on each request. Every write tool needs one: create_ticket, notify_crew, close_report, update_customer_record.","minutes":null,"lo":["LO5"]},{"id":"two-fixes","n":19,"title":"Checkpoints protect the steps between calls; keys protect the call itself","kind":"content","session":2,"hash":"b13b5305","md":"#### [day4#two-fixes] Checkpoints protect the steps between calls; keys protect the call itself\n\n*Which fix for which failure*\n\n- **Checkpoint.** The process dies between steps. Resume from the saved state; finished steps do not run again.\n- **Idempotency key.** The answer to one write is lost. Retry with the same key; the service does not write twice.\n\n> **Both, for every agent that writes.** The capstone's agent incident is a duplicate write.","notes":"Stretch: a second process reads the crashed thread's state from SQLite and sees the ticket it already holds.","minutes":null,"lo":["LO5"]},{"id":"checkpoint-2","n":20,"title":"Checkpointed, still duplicated","kind":"quiz","session":2,"hash":"0cc0f00b","md":"#### [day4#checkpoint-2] Checkpointed, still duplicated\n\n*Checkpoint*\n\n**Question:** Mubadir's flow now has a checkpointer. A ticket service timeout still produced two tickets for one report. Why?\n\n- A. The checkpointer was not saving\n- B. The ticket database lost the first ticket\n- C. The retry ran inside one step, and the service had no key to recognise it\n- D. The model asked for two tickets","notes":"Answer: C.","minutes":null,"lo":["LO5"]},{"id":"lab-4-2","n":21,"title":"Crash, resume, and no duplicate tickets","kind":"lab","session":2,"hash":"5cd05ebf","md":"#### [day4#lab-4-2] Crash, resume, and no duplicate tickets\n\nLab 4.2 · 25 min\n\nRun Mubadir's ticket flow as a checkpointed graph, crash it mid-task and resume, then reproduce the duplicate ticket a retry creates and fix the tool with an idempotency key.\n\n[D4_2_durable_retries.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D4_2_durable_retries.ipynb)\n\n- [ ] The ticket graph with a checkpointer (6 min)\n- [ ] Crash mid-task and resume (6 min)\n- [ ] A retry after a timeout: two tickets (6 min)\n- [ ] An idempotency key: one ticket (7 min)\n- [ ] ✱ Stretch: Resume the session from a second process","notes":"Usual problems: invoking with the original input instead of None, which starts over on the same thread; a new thread id on resume; an idempotency key that includes the time. Delete artifacts/D4_2 between attempts: the ticket services are files.","minutes":null,"lo":[]},{"id":"s3","n":22,"title":"Replay to reproduce incidents","kind":"section","session":3,"hash":"9dd29658","md":"#### [day4#s3] Replay to reproduce incidents\n\n*Session 3*\n\n- Replay a recorded session deterministically\n- Find the cause of an incident in the replayed trace\n- Add the incident to the regression suite","notes":"","minutes":null,"lo":["LO5"]},{"id":"inc-0412","n":23,"title":"Mubadir told a customer in Al-Jabal that power was back; it never was","kind":"content","session":3,"hash":"79d2baf5","md":"#### [day4#inc-0412] Mubadir told a customer in Al-Jabal that power was back; it never was\n\n*INC-0412 · invented for the course*\n\n**Customer:** Salam, my house has had no power for two hours. Account ACC-40005754.\n\n**Mubadir (weak example):** Power is restored on your feeder F-3350. If you are still without power, reply to this message.\n\n- **40 minutes later.** The customer calls again. The control room confirms the outage never ended. The report had been closed.","notes":"The service note says the outage service's read replica was lagging during a database failover. Ask: where would you start? Most say the model.","minutes":null,"lo":["LO5"]},{"id":"read-the-trace","n":24,"title":"Step 2 returned \"restored\", 140 minutes old, and the agent closed the report on it","kind":"content","session":3,"hash":"03864579","md":"#### [day4#read-the-trace] Step 2 returned \"restored\", 140 minutes old, and the agent closed the report on it\n\n*Lab 4.3 · step 1*\n\n- 1 find_customer: → F-3350, Al-Jabal\n- 2 get_outage: → restored, ticket OT-30412, age 140 minutes\n- 3 close_report: → closed\n- 4 final: Power is restored on your feeder F-3350.","notes":"The model did what its prompt says. The data was stale, and nothing in the harness asked how old it was. The fix belongs where the tool runs.","minutes":null,"lo":["LO5"]},{"id":"replay-not-rerun","n":25,"title":"Replay from the recording, not a rerun against today's services","kind":"content","session":3,"hash":"704988d1","md":"#### [day4#replay-not-rerun] Replay from the recording, not a rerun against today's services\n\n*Lab 4.3 · step 2*\n\n- The recording holds every model output and every tool response.\n- Replay feeds them back through today's harness code: no model, no services.\n- The same wrong answer comes back every time.\n\n- **A rerun would not.** The replica has caught up and a hosted model can answer differently: the failure would hide.","notes":"This is why the session log keeps the tool results and not only the model's text, and why it is redacted and retained under the rules of Day 3 Session 3.","minutes":null,"lo":["LO5"]},{"id":"freshness-guard","n":26,"title":"A guard in the harness blocks a close on a stale status","kind":"content","session":3,"hash":"e62f5a2b","md":"#### [day4#freshness-guard] A guard in the harness blocks a close on a stale status\n\n*Lab 4.3 · step 3*\n\n```python\n# file: Lab 4.3\ndef freshness_guard(action, history):\n    if action[\"tool\"] != \"close_report\":\n        return None\n    last = latest get_outage result in history\n    if last[\"status\"] != \"restored\":\n        return \"not restored\"\n    if last[\"age_minutes\"] > 15:\n        return f\"status is {last['age_minutes']} minutes old: confirm with the control room\"\n```\n\nReplayed with the guard: blocked at step 3, \"status is 140 minutes old (limit 15)\".","notes":"A guard runs on every call and is tested by replay; a prompt instruction is followed most of the time. The 15 minutes is the course's assumption: set it with the control room.","minutes":null,"lo":["LO5"]},{"id":"regression-suite","n":27,"title":"The incident becomes a sixth case; the fix keeps the other five passing","kind":"content","session":3,"hash":"c710189d","md":"#### [day4#regression-suite] The incident becomes a sixth case; the fix keeps the other five passing\n\n*Lab 4.3 · step 4, from the course's run*\n\n| Case | Without the guard | With the guard |\n| --- | --- | --- |\n| new outage, known outage, record change, unknown account | pass | pass |\n| restored 6 minutes ago | pass | pass |\n| INC-0412: restored 140 minutes ago | fail | pass |","notes":"The fresh \"restored\" case is the one that proves the guard is not simply blocking every close. The suite runs on every change to the bundle.","minutes":null,"lo":["LO5"]},{"id":"suite-new-bundle","n":28,"title":"A bundle without close_report changes exactly one case, as intended","kind":"content","session":3,"hash":"f7d54936","md":"#### [day4#suite-new-bundle] A bundle without close_report changes exactly one case, as intended\n\n*Stretch · the suite against a new bundle*\n\n- The sandbox no longer allows `close_report`: closing goes to a person.\n- Replayed suite: \"restored 6 minutes ago\" now fails, everything else passes.\n- Update that case's expectation in the same change, with the reason.","notes":"A suite that changes is fine when the change is the one the release intends, and written down. An unexplained change is a regression.","minutes":null,"lo":["LO5"]},{"id":"checkpoint-3","n":29,"title":"Reproduce it","kind":"quiz","session":3,"hash":"b4d37f66","md":"#### [day4#checkpoint-3] Reproduce it\n\n*Checkpoint*\n\n**Question:** The team wants to reproduce INC-0412 by sending the same customer report to Mubadir today. Why will that probably not show the failure?\n\n- A. The replica has caught up and the model may answer differently: only the recording holds what happened\n- B. The customer's account has been deleted\n- C. The new guard will block it\n- D. Agents never behave the same way twice","notes":"Answer: A.","minutes":null,"lo":["LO5"]},{"id":"lab-4-3","n":30,"title":"Replay incident INC-0412","kind":"lab","session":3,"hash":"2d57a363","md":"#### [day4#lab-4-3] Replay incident INC-0412\n\nLab 4.3 · 25 min\n\nReplay the recorded session in which Mubadir told a customer that power was back while the outage was live, find the cause in the trace, fix the harness and add the case to the regression suite.\n\n[D4_3_replay_incident.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D4_3_replay_incident.ipynb)\n\n- [ ] Read the recorded trace (5 min)\n- [ ] Replay it: the same wrong answer (7 min)\n- [ ] Fix the harness (7 min)\n- [ ] The new regression case and the suite (6 min)\n- [ ] ✱ Stretch: Replay the whole suite against a new bundle","notes":"Usual problems: a guard that blocks every close_report (the fresh case catches it); reading the first get_outage result instead of the latest; adding the case to data/replay instead of the copy in artifacts. Ask early finishers to draft the post-incident note: cause, fix, case, owner.","minutes":null,"lo":[]},{"id":"s4","n":31,"title":"Budgets, gateways and kill switches","kind":"section","session":4,"hash":"a86f711b","md":"#### [day4#s4] Budgets, gateways and kill switches\n\n*Session 4*\n\n- Set step and spend limits at a gateway\n- Stop a runaway agent with a kill switch\n- Keep the stopped sessions and hand them to a person","notes":"","minutes":null,"lo":["LO5","LO6"]},{"id":"runaway-session","n":32,"title":"The outage service answered \"pending\" and Mubadir asked again 79 times","kind":"content","session":4,"hash":"ae6c1b44","md":"#### [day4#runaway-session] The outage service answered \"pending\" and Mubadir asked again 79 times\n\n*14 October*\n\n**80 calls · 0.169 SAR** one session with no limits, from the course's run\n\n- Input tokens per call grew from 127 to 3,609: each call resends the conversation.\n- The cost of a loop grows with the square of its length.\n- This is Day 2's expensive days for Mubadir.","notes":"The version running that day had no step limit in its harness. Prices are the course's assumptions; the shape is what matters.","minutes":null,"lo":["LO5","LO6"]},{"id":"gateway-policy","n":33,"title":"Every model call passes the gateway, which checks steps, session spend and the day's budget","kind":"content","session":4,"hash":"07745995","md":"#### [day4#gateway-policy] Every model call passes the gateway, which checks steps, session spend and the day's budget\n\n*Lab 4.4 · step 2*\n\n```python\n# file: Lab 4.4\ndef policy(state):\n    if state[\"session_steps\"] >= 12:      return \"step limit\"\n    if state[\"session_spend\"] >= 0.01:    return \"session spend limit\"\n    if state[\"day_spend\"] >= 2.90:        return \"daily budget\"   # 90 SAR / 31 days\n```\n\nThe same runaway session: stopped by the gateway after 12 calls, 0.0057 SAR.","notes":"Why at the gateway and not only in max_steps: the gateway sees every session of every version, including a harness with a bug or a bundle that raised its limit, and it sees the money.","minutes":null,"lo":["LO5","LO6"]},{"id":"kill-switch","n":34,"title":"After two sessions hit the step limit, one switch stopped the version","kind":"content","session":4,"hash":"013a3178","md":"#### [day4#kill-switch] After two sessions hit the step limit, one switch stopped the version\n\n*Lab 4.4 · step 3, from the course's run*\n\n- S-4411: stopped: step limit, 12 calls\n- S-4412: stopped: step limit, 12 calls\n- kill switch: mubadir-2026.10.2, by Dhafer Al-Hazzani\n- S-4413 to S-4416: refused before the first call\n\n24 model calls instead of 72: the switch saved 48.","notes":"The switch works on a version, not on the agent: the previous version or a person keeps serving. Who may turn it on is decided before the incident: the release owner and the control-room duty engineer.","minutes":null,"lo":["LO5"]},{"id":"sessions-kept","n":35,"title":"Stopping the agent must not drop the customers it was serving","kind":"content","session":4,"hash":"0051312d","md":"#### [day4#sessions-kept] Stopping the agent must not drop the customers it was serving\n\n*Lab 4.4 · step 4*\n\n- Every session is in the store with its messages and status.\n- Six stopped sessions go to customer care with the account, steps, spend and last tool result.\n- The same sessions can be replayed for the post-incident note.\n\n**6 of 6** stopped sessions handed over, none lost","notes":"The handover file holds the account number but no phone number or name: customer care looks them up in its own system.","minutes":null,"lo":["LO5"]},{"id":"litellm-budgets","n":36,"title":"LiteLLM puts budgets on keys, users and teams; one key per version makes the switch a deletion","kind":"content","session":4,"hash":"a8451671","md":"#### [day4#litellm-budgets] LiteLLM puts budgets on keys, users and teams; one key per version makes the switch a deletion\n\n*Stretch · the same limits in a proxy*\n\n```json\n// file: POST /key/generate\n{\"models\": [\"steady\"], \"max_budget\": 2.9, \"budget_duration\": \"1d\",\n \"metadata\": {\"agent\": \"mubadir\", \"version\": \"mubadir-2026.10.2\"}}\n```\n\nBudgets need the proxy's database (PostgreSQL); rate limits answer HTTP 429. Per-session step limits stay in the harness and the gateway policy.","notes":"Sources: LiteLLM documentation on budgets and rate limits (checked November 2026). The configuration in the lab is not run: it needs a database and a proxy. Tool names are examples, not endorsements.","minutes":null,"lo":["LO6"]},{"id":"agent-runbook","n":37,"title":"A runbook says how to detect, who decides, how to roll back and how to stop","kind":"content","session":4,"hash":"eb8d369d","md":"#### [day4#agent-runbook] A runbook says how to detect, who decides, how to roll back and how to stop\n\n*Runbooks · recap from AE-205, now for three systems*\n\n| System | Detect | Decide | Roll back | Stop |\n| --- | --- | --- | --- | --- |\n| Classifier | contract report, drift alert, AUC by region | Lamya | move the champion alias back | pause the retraining trigger |\n| Nabd | canary analysis, online evaluation, spans | Dhafer, with Saqer | abort the rollout, redeploy the last digest | pin the previous release |\n| Mubadir | gateway stops, spend per resolved report | Dhafer or Mutab | release the previous bundle | kill switch for the version, then the handover |\n\n> **Written before the incident.** Each cell names a signal or a command from this week's labs. The capstone's runbook has this shape.","notes":"AE-205 wrote a runbook for two alerts of one service. Here each row is a system and each cell points at something the participants built: the validation report and the regional gate (Day 1), the canary triggers and the digest (Day 2), the monitors (Day 3), the gateway policy, the kill switch and the handover (today). Ask each table to fill the Mubadir row for a second failure, the duplicate ticket: detect by two tickets on one report, roll back to the bundle before the change, fix with an idempotency key. Runbook and reproducibility are 15 of the rubric's 100.","minutes":null,"lo":["LO5"]},{"id":"checkpoint-4","n":38,"title":"Six sessions looping","kind":"quiz","session":4,"hash":"4dc5438d","md":"#### [day4#checkpoint-4] Six sessions looping\n\n*Checkpoint*\n\n**Question:** Every session of Mubadir's new version loops on the same pending status. Each stops at the step limit. What does the duty engineer do?\n\n- A. Nothing: the step limit already stops each session\n- B. Stop all of Mubadir, every version\n- C. Raise the step limit so sessions can finish\n- D. Turn on the kill switch for that version and hand its sessions to people","notes":"Answer: D.","minutes":null,"lo":["LO5"]},{"id":"lab-4-4","n":39,"title":"Limits and a kill switch at the gateway","kind":"lab","session":4,"hash":"a3a92e23","md":"#### [day4#lab-4-4] Limits and a kill switch at the gateway\n\nLab 4.4 · 25 min\n\nLet a runaway Mubadir session loop without limits, then set step and spend limits at the gateway, stop the agent version with the kill switch and hand its sessions to a person without losing them.\n\n[D4_4_budgets_killswitch.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D4_4_budgets_killswitch.ipynb)\n\n- [ ] The runaway session without limits (4 min)\n- [ ] Step and spend limits (8 min)\n- [ ] The kill switch (7 min)\n- [ ] Sessions kept and handed over (6 min)\n- [ ] ✱ Stretch: The same limits as a LiteLLM proxy configuration","notes":"Usual problems: a policy that checks after the call instead of before; killing the agent name instead of the version; a handover that reads only finished sessions. The capstone kickoff follows this lab.","minutes":null,"lo":[]},{"id":"day-4-recap","n":40,"title":"A bundle you can name, a run that survives a crash, an incident you can replay, an agent you can stop","kind":"content","session":4,"hash":"1cfdec29","md":"#### [day4#day-4-recap] A bundle you can name, a run that survives a crash, an incident you can replay, an agent you can stop\n\n*Day 4 recap*\n\n- **Bundle.** four files, one version\n- **Durable.** checkpoint and key\n- **Replay.** guard and case\n- **Stop.** limits, switch, handover","notes":"Agent operations are 20 of the rubric's 100.","minutes":null,"lo":[]},{"id":"capstone-kickoff","n":41,"title":"A release week at Wahaj: each event stopped, shipped or rolled back on evidence","kind":"content","session":4,"hash":"c08b4c28","md":"#### [day4#capstone-kickoff] A release week at Wahaj: each event stopped, shipped or rolled back on evidence\n\n*Capstone kickoff*\n\n- **Monday and Tuesday.** The scheduled retrain meets the corrupt September batch, then the corrected re-delivery: valid, and does it pass the gate?\n- **Wednesday.** The provider updates Nabd's model: gate, canary, ship or roll back.\n- **Thursday.** A Mubadir incident: replay, fix, add the case, keep the sessions.\n\nThe events, their data and a starter are in `labs/capstone/`. Submit a public repository with the pipeline logs, the release log, the runbook and timestamped traces.","notes":"Walk through labs/capstone/README.md: the events, the minimum requirements, the rubric and the timeline. Each participant runs the starter once before leaving today, so problems with the environment show up now.","minutes":null,"lo":[]},{"id":"tomorrow-capstone","n":42,"title":"Capstone: defend your release week for eight minutes","kind":"content","session":4,"hash":"a3d93b2d","md":"#### [day4#tomorrow-capstone] Capstone: defend your release week for eight minutes\n\n*Tomorrow · Day 5*\n\nShow the release log and the runbook, then diagnose one fault the assessor injects, live, from your traces and logs.","notes":"Remind participants to keep timestamps on every trace and run log: they are the evidence of authorship together with the defence.","minutes":null,"lo":[]}],"activities":[{"id":"review-day-3-q1","slide":"review-day-3","type":"single","prompt":"Three input alerts fired last week: dust high for one day, load 10% higher every day since Tuesday's meter recalibration, temperature slowly falling over a month. Which one needs action today?","options":[{"key":"A","text":"Dust, because its PSI was the largest"},{"key":"B","text":"Temperature, because it moved for a month"},{"key":"C","text":"Load: a step since a known change, likely skew, so call the data owner"},{"key":"D","text":"None: inputs do not matter until labels arrive"}],"correct":[2],"explanation":"A sustained step that starts with a measurement change is skew; it changes every score until the data is fixed.","misconceptions":["One day is filtered by persistence: it is weather","October cools every year and the model was trained on a full year","","Ignores a sustained step with a known cause"],"lo":["LO4"]},{"id":"checkpoint-1-q1","slide":"checkpoint-1","type":"single","prompt":"A developer raises Mubadir's max_steps from 10 to 30 in harness.yaml and says no release is needed because the prompt did not change. What do you answer?","options":[{"key":"A","text":"Agree: only the prompt changes what the agent does"},{"key":"B","text":"It is a new bundle version: harness settings change behaviour and cost"},{"key":"C","text":"It is enough to note it in the session log"},{"key":"D","text":"Only a sandbox change needs a release"}],"correct":[1],"explanation":"Three times the steps can mean three times the spend of a loop; every file of the bundle is part of the version.","misconceptions":["Treats the prompt as the only part that changes behaviour","","The session log records runs; it does not release anything","Confuses the sandbox with the harness"],"lo":["LO5"]},{"id":"checkpoint-2-q1","slide":"checkpoint-2","type":"single","prompt":"Mubadir's flow now has a checkpointer. A ticket service timeout still produced two tickets for one report. Why?","options":[{"key":"A","text":"The checkpointer was not saving"},{"key":"B","text":"The ticket database lost the first ticket"},{"key":"C","text":"The retry ran inside one step, and the service had no key to recognise it"},{"key":"D","text":"The model asked for two tickets"}],"correct":[2],"explanation":"The service committed and its answer was lost; only an idempotency key lets it return the first ticket.","misconceptions":["The checkpoint was there; it does not cover a retry inside a step","Durability of the database is not the issue: both writes were kept","","A model choice cannot make the service write twice"],"lo":["LO5"]},{"id":"checkpoint-3-q1","slide":"checkpoint-3","type":"single","prompt":"The team wants to reproduce INC-0412 by sending the same customer report to Mubadir today. Why will that probably not show the failure?","options":[{"key":"A","text":"The replica has caught up and the model may answer differently: only the recording holds what happened"},{"key":"B","text":"The customer's account has been deleted"},{"key":"C","text":"The new guard will block it"},{"key":"D","text":"Agents never behave the same way twice"}],"correct":[0],"explanation":"Replay uses the stored model outputs and tool responses, so the same failure returns every time.","misconceptions":["","The account still exists; the data has simply moved on","A guard that is not yet written cannot block anything","Agents are not random by design; the inputs changed"],"lo":["LO5"]},{"id":"checkpoint-4-q1","slide":"checkpoint-4","type":"single","prompt":"Every session of Mubadir's new version loops on the same pending status. Each stops at the step limit. What does the duty engineer do?","options":[{"key":"A","text":"Nothing: the step limit already stops each session"},{"key":"B","text":"Stop all of Mubadir, every version"},{"key":"C","text":"Raise the step limit so sessions can finish"},{"key":"D","text":"Turn on the kill switch for that version and hand its sessions to people"}],"correct":[3],"explanation":"When the cause is shared, one switch per version stops the waste at once and keeps the customers served by people or the previous version.","misconceptions":["Pays for every session's loop when the cause is shared","Stops service for everyone, including the working version","Raises the cost of each loop and fixes nothing",""],"lo":["LO5"]}],"ai":{"context":{"course":"../context/course.md","courseJs":"../context/course.js","day":"day4.md","llms":"../llms.txt"},"tasks":[],"tools":[]},"bridge":{"allowedOrigins":[]},"features":{},"strings":{}}</script>
+<script src="../_engine/academy.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+part_code,name,depot,on_hand
+P-101,33 kV pin insulator,Al-Rimal,9
+P-101,33 kV pin insulator,Al-Hadba,4
+P-101,33 kV pin insulator,Al-Sahil,12
+P-101,33 kV pin insulator,Al-Wadi,1
+P-101,33 kV pin insulator,Al-Jabal,9
+P-101,33 kV pin insulator,Al-Nakheel,7
+P-114,RMU insulated operating handle,Al-Rimal,3
+P-114,RMU insulated operating handle,Al-Hadba,3
+P-114,RMU insulated operating handle,Al-Sahil,3
+P-114,RMU insulated operating handle,Al-Wadi,6
+P-114,RMU insulated operating handle,Al-Jabal,0
+P-114,RMU insulated operating handle,Al-Nakheel,7
+P-120,earthing set 13.8 kV,Al-Rimal,4
+P-120,earthing set 13.8 kV,Al-Hadba,10
+P-120,earthing set 13.8 kV,Al-Sahil,0
+P-120,earthing set 13.8 kV,Al-Wadi,6
+P-120,earthing set 13.8 kV,Al-Jabal,10
+P-120,earthing set 13.8 kV,Al-Nakheel,4
+P-133,cable joint kit 240 mm,Al-Rimal,9
+P-133,cable joint kit 240 mm,Al-Hadba,3
+P-133,cable joint kit 240 mm,Al-Sahil,1
+P-133,cable joint kit 240 mm,Al-Wadi,3
+P-133,cable joint kit 240 mm,Al-Jabal,11
+P-133,cable joint kit 240 mm,Al-Nakheel,1
+P-150,drop-out fuse 100 A,Al-Rimal,2
+P-150,drop-out fuse 100 A,Al-Hadba,5
+P-150,drop-out fuse 100 A,Al-Sahil,3
+P-150,drop-out fuse 100 A,Al-Wadi,7
+P-150,drop-out fuse 100 A,Al-Jabal,7
+P-150,drop-out fuse 100 A,Al-Nakheel,9

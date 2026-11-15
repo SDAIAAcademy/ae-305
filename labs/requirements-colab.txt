@@ -1,0 +1,7 @@
+# Colab already ships numpy, pandas, scipy, scikit-learn, matplotlib, pyyaml and openai.
+mlflow>=3.4
+pandera>=0.24
+opentelemetry-sdk>=1.37
+langgraph>=1.0
+langgraph-checkpoint-sqlite>=2.0
+python-dotenv>=1.1

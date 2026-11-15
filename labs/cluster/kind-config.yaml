@@ -1,0 +1,6 @@
+# A single-node local cluster for the optional delivery path of Labs 2.1 and 2.3: kind create cluster --config kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: wahaj
+nodes:
+  - role: control-plane

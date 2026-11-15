@@ -1,0 +1,482 @@
+---
+course: "Operating Machine Learning and Language Model Systems"
+code: "AE-305"
+version: "2027.1.0"
+deck: "day3"
+day: 3
+language: "en"
+view: "trainee"
+source: "https://sdaiaacademy.github.io/ae-305/slides/day3.html"
+---
+
+# Operating Machine Learning and Language Model Systems
+
+## Day 3: Observe
+
+Spans for every step, drift monitors that do not cry wolf, online evaluation with a review queue, and a retraining policy
+
+#### [day3#title] Observe
+
+*SDAIA Academy · Operating Machine Learning and Language Model Systems*
+
+Day 3: Spans for every step, drift monitors that do not cry wolf, online evaluation with a review queue, and a retraining policy
+
+AI Engineering Track · 4 teaching days + capstone day · 4 sessions · 4 labs · AE-305
+
+#### [day3#agenda] Observe
+
+*Today*
+
+- **Session 1 · Tracing requests end to end**: One trace per request with spans for retrieval, the model and each tool
+- **Session 2 · Drift, skew and delayed labels**: Monitors on inputs while labels are late, tuned so that a real shift alerts and a noisy day does not
+- **Session 3 · Online evaluation and review queues**: Sample live traces, grade them with a calibrated grader, correct for its errors and send failures to people
+- **Session 4 · Retraining and refresh policies**: Retrain on a trigger only when labels are ready, the cost is known and a person approves
+
+#### [day3#review-day-2] Which evidence rolled the canary back?
+
+*Review of Day 2*
+
+**Question:** A new snapshot passed the offline gate and its shadow run, then the canary at 25% rolled back. What made the difference?
+
+- A. The offline gate was run again with more cases
+- B. Real traffic at 25% included the Arabic-heavy shift the earlier evidence never saw
+- C. The shadow run had failed and was ignored
+- D. A reviewer refused the release at 25%
+
+### Session 1: Tracing requests end to end
+
+#### [day3#s1] Tracing requests end to end
+
+*Session 1*
+
+- Add spans with attributes for retrieval, model and tool calls
+- Find the slowest step from the traces
+- Keep personal data out of span attributes
+
+#### [day3#nabd-is-slow] Crews say Nabd is slow, and everyone blames the model
+
+*The complaint*
+
+- A request runs four kinds of step: retrieval, a model call, a tool call, a second model call.
+- Logs say the request took long. They do not say which step.
+- A trace records every step of one request as a span, with its parent, its duration and its attributes.
+
+- **Guessing costs.** Swapping to a faster model would have cost a release, an evaluation and a gate, and fixed nothing.
+
+#### [day3#trace-and-spans] One trace per request; one span per step, nested under the request
+
+*Traces and spans*
+
+- invoke_agent Nabd: 497 ms · release nabd-2026.10.1
+- · retrieval manuals: 257 ms · index v3 · 3 hits
+- · chat steady: 81 ms · 329 tokens in, 16 out
+- · execute_tool get_feeder_status: 78 ms
+- · chat steady: 80 ms · 369 tokens in, 15 out
+
+"What is the status of feeder F-0213?", from the course's run with the production configuration and the scripted stand-in model.
+
+#### [day3#genai-conventions] Name spans and attributes the way back ends already understand
+
+*OpenTelemetry GenAI semantic conventions*
+
+| Operation | Span name | Attributes |
+| --- | --- | --- |
+| invoke_agent | invoke_agent Nabd | gen_ai.agent.name |
+| retrieval | retrieval manuals | the index version, the hits |
+| chat | chat steady | gen_ai.request.model, gen_ai.response.model, gen_ai.usage.input_tokens and output_tokens |
+| execute_tool | execute_tool get_feeder_status | gen_ai.tool.name, an error status |
+
+> **Status: Development.** The conventions moved to their own repository and can still change. Pin the version you follow.
+
+#### [day3#tracer-and-exporter] A provider, a processor, an exporter, then a span around each step
+
+*Lab 3.1 · steps 1 and 2*
+
+```python
+# file: Lab 3.1
+exporter = InMemorySpanExporter()           # production: OTLP to a collector
+provider = TracerProvider()
+provider.add_span_processor(SimpleSpanProcessor(exporter))
+tracer = provider.get_tracer("wahaj.nabd")
+
+class TracedNabd(nabd.Nabd):
+    def retrieve(self, question):
+        with tracer.start_as_current_span("retrieval manuals") as span:
+            span.set_attribute("gen_ai.operation.name", "retrieval")
+            return super().retrieve(question)
+```
+
+#### [day3#time-breakdown] Retrieval took 71% of the request time, the model 27%
+
+*Lab 3.1 · step 3, from the course's run*
+
+| Item | Value |
+| --- | --- |
+| retrieval | 0.71 |
+| chat | 0.27 |
+| execute_tool | 0.02 |
+
+Ten crew questions; median request 338 ms. The production configuration has `cache_index=False`: the index is fetched from storage and rebuilt on every request.
+
+#### [day3#measure-again] Cache the index once per process, then measure again with the same spans
+
+*Lab 3.1 · step 4*
+
+- **338 → 82 ms** median request, ten questions
+- **0.71 → 0.005** retrieval's share of request time
+
+> **Same instrument, before and after.** A fix is shown by the measurement that found the problem, not by a feeling that it is faster.
+
+#### [day3#no-pii-in-spans] Spans travel far: keep questions and answers out, or redact them first
+
+*What not to record*
+
+- Traces are copied to a collector and kept for weeks, read by people outside the team.
+- Crew questions sometimes hold a customer's phone, account number or national ID.
+- Record content only when a purpose needs it, and redact before it is recorded.
+
+```text
+# file: stretch
+Outage on F-0213; customer called from [phone]
+about account [account], ID [national-id].
+```
+
+#### [day3#checkpoint-1] Where the time goes
+
+*Checkpoint*
+
+**Question:** A trace of a slow Nabd request shows the retrieval span at 260 ms and each model span at 80 ms. The team proposes a faster model. What do you say?
+
+- A. Agree: model calls are usually the slow part
+- B. Collect a month of traces before deciding
+- C. Add more replicas of Nabd
+- D. Fix retrieval first, then measure again with the same spans
+
+#### [day3#lab-3-1] Spans for Nabd and the slowest step
+
+Lab 3.1 · 25 min
+
+Instrument Nabd with OpenTelemetry spans for retrieval, model and tool calls, run ten crew questions, find the slowest step, fix it and measure again.
+
+[D3_1_tracing.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_1_tracing.ipynb)
+
+- [ ] A tracer with an in-memory exporter (4 min)
+- [ ] Spans for retrieval, model and tool (9 min)
+- [ ] Ten requests and the slowest step (7 min)
+- [ ] Fix it and measure again (5 min)
+- [ ] ✱ Stretch: Redact phone numbers and account numbers in span attributes
+
+### Session 2: Drift, skew and delayed labels
+
+#### [day3#s2] Drift, skew and delayed labels
+
+*Session 2*
+
+- Compute a drift statistic per feature per day
+- Tell drift from training and serving skew
+- Tune thresholds and persistence to remove false alarms
+
+#### [day3#labels-arrive-late] A fault is known 30 days after the score, and later in the mountains
+
+*Why watch inputs*
+
+**Day 0** the feeder is scored → **Day 30** most labels known → **About day 60** Al-Jabal inspections entered
+
+Until the labels arrive, the only signals are the inputs and the scores. A first cut of the labels is not the truth: Lab 1.4's challenger A learned from one.
+
+#### [day3#psi] The population stability index compares a day's distribution with a reference
+
+*A drift statistic*
+
+```python
+# file: Lab 3.2
+edges = quantiles(reference, deciles)
+ref = share of reference per bin
+cur = share of today per bin
+psi = sum((cur - ref) * ln(cur / ref))
+```
+
+| PSI | Rule of thumb |
+| --- | --- |
+| below 0.1 | stable |
+| 0.1 to 0.25 | a moderate move |
+| above 0.25 | a large move |
+
+#### [day3#naive-alerts] PSI above 0.1 against the first week: 51 alerts in 23 days
+
+*Lab 3.2 · steps 1 and 2, from the course's run*
+
+| Item | Value |
+| --- | --- |
+| temperature | 20 |
+| load | 20 |
+| dust | 11 |
+
+The heat spike of day 8, the quiet day 17 (120 feeders) and October's seasonal cooling all alert, next to the two real shifts.
+
+#### [day3#three-tuning-rules] Each tuning rule removes one kind of false alarm
+
+*Lab 3.2 · step 3*
+
+- **Rolling reference.** The previous seven days: the season is absorbed, a step is not.
+- **Minimum sample.** Fewer than 200 feeders: not judged.
+- **Persistence.** Above 0.2 on three judged days in a row.
+
+**51 → 2** alerts: load from day 12 (fired day 14), dust from day 22 (fired day 24)
+
+#### [day3#drift-or-skew] Load stepped up about 10% overnight while temperatures fell: the meters changed, not the grid
+
+*Drift or skew*
+
+- **Skew.** Serving computes a feature differently from training. Here: recalibrated meters read high from day 12. Fix the data; retraining would learn the error.
+- **Drift.** The world changes. Here: dust rises from day 21. Watch the labels and consider retraining when they arrive.
+
+Stretch: the median ratio of serving load to the same feeder's batch load steps by about 10% on day 12.
+
+#### [day3#rolling-blind-spot] A rolling reference absorbs a slow drift, so keep one fixed comparison too
+
+*What the tuned monitor cannot see*
+
+- Daily: rolling seven-day reference, for steps and fast changes.
+- Monthly: against the training snapshot, for slow moves that matter.
+- When labels arrive: the model's own metrics by region, which inputs cannot replace.
+
+> **Three files leave the lab.** The dashboard (PSI per feature per day, with the threshold and the alerts), the alert rules, and the note: shifts found, alarms removed and by which rule, what is no longer visible. Lamya signs the note.
+
+#### [day3#checkpoint-2] One hot day
+
+*Checkpoint*
+
+**Question:** Temperature's PSI is 1.56 on day 8, then below 0.1 the next day. The monitor needs three days in a row above 0.2. What happens, and is it right?
+
+- A. An alert fires: 1.56 is far above 0.2
+- B. No alert: a one-day heat spike is weather, and it is logged
+- C. The monitor is broken and must be retuned
+- D. Retrain to include the hot day
+
+#### [day3#lab-3-2] Two shifts in a replayed month
+
+Lab 3.2 · 25 min
+
+Replay a month of classifier inputs with two planted shifts, alert naively and count the false alarms, then tune the threshold and persistence until only the two shifts alert.
+
+[D3_2_drift_monitors.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_2_drift_monitors.ipynb)
+
+- [ ] Drift per feature per day (7 min)
+- [ ] Naive alerts and their false alarms (5 min)
+- [ ] Tune threshold and persistence (8 min)
+- [ ] The note: shifts found, alarms removed (5 min)
+- [ ] ✱ Stretch: Measure skew between the training snapshot and serving for one feature
+
+### Session 3: Online evaluation and review queues
+
+#### [day3#s3] Online evaluation and review queues
+
+*Session 3*
+
+- Redact traces before storage and apply a retention rule
+- Grade a sample with a calibrated grader and correct the rate
+- Route failures and uncertain cases to a review queue
+
+#### [day3#offline-and-online] The gate checks 24 cases once; Nabd answers hundreds of questions a day
+
+*Online evaluation*
+
+1. **Record** traces, redacted
+2. **Sample** a fixed number, seeded
+3. **Grade** the calibrated grader
+4. **Correct** for the grader's errors
+5. **Review** failures and a few passes
+
+#### [day3#redact-before-storage] Redact before the trace is stored, not before it is displayed
+
+*Lab 3.3 · step 1*
+
+```python
+# file: Lab 3.3
+"The customer [name] called from [phone]."
+"Account [account], national ID [national-id]."
+```
+
+- 87 of 400 questions held personal data.
+- Grading needs the answer and the context, not the customer.
+- Data never stored needs no access control and no deletion.
+
+#### [day3#raw-rate] The grader fails 29 of 100 sampled answers
+
+*Lab 3.3 · steps 2 and 3, from the course's run*
+
+**0.29** raw failure rate, 95% interval 0.21 to 0.39
+
+- Some failures are good answers with a polite closing sentence the grader cannot find in the manual.
+- Some passes are bad: the right words with a wrong number.
+
+#### [day3#rogan-gladen] Correct the raw rate with the grader's sensitivity and specificity
+
+*Lab 3.3 · step 4*
+
+```text
+# file: Rogan-Gladen
+true = (raw + sp - 1) / (se + sp - 1)
+     = (0.29 + 0.817 - 1) / (0.90 + 0.817 - 1)
+     = 0.15
+```
+
+| On 150 labelled traces | value |
+| --- | --- |
+| sensitivity: bad answers failed | 0.90 |
+| specificity: good answers passed | 0.82 |
+| corrected failure rate | 0.15 |
+| true rate in the sample | 0.17 |
+
+#### [day3#review-queue] Every failure and one pass in ten go to the reviewers' queue
+
+*Routing*
+
+**32** traces for review from a sample of 100
+
+- Failures: confirm or overturn; each overturn is a calibration label.
+- Random passes: what the grader lets through.
+- Each review returns to the calibration set, so the grader's numbers stay current.
+
+#### [day3#retention] Keep traces for a stated time, longer only while a reviewer needs them
+
+*Stretch · retention*
+
+- Wahaj's rule in the lab: redacted traces kept 3 days for debugging; those in the review queue held until reviewed.
+- On day 7: 221 traces deleted, 179 kept, 32 of them held for review.
+- PDPL Article 18: personal data is destroyed once it is no longer needed for its purpose.
+
+#### [day3#checkpoint-3] A grader's rate
+
+*Checkpoint*
+
+**Question:** The grader fails 29% of a sample. On labelled traces it fails 90% of bad answers and passes 82% of good ones. What do you report?
+
+- A. 29% of Nabd's answers are wrong
+- B. About 32%: the grader misses a tenth of the bad answers
+- C. About 15% after correction, with the raw rate and the sample sizes
+- D. Nothing until every trace is reviewed by hand
+
+#### [day3#lab-3-3] Online evaluation and a review queue
+
+Lab 3.3 · 25 min
+
+Redact a week of Nabd traces, sample them, score them with the provided calibrated grader, correct the failure rate for the grader's error and route failures to review.
+
+[D3_3_online_eval.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_3_online_eval.ipynb)
+
+- [ ] Redact before storage (6 min)
+- [ ] Sample the week (4 min)
+- [ ] Grade with the calibrated grader (6 min)
+- [ ] Route to review and correct the rate (9 min)
+- [ ] ✱ Stretch: A retention rule that deletes traces past their limit
+
+### Session 4: Retraining and refresh policies
+
+#### [day3#s4] Retraining and refresh policies
+
+*Session 4*
+
+- Write a trigger from drift or a schedule that waits for labels
+- Estimate the cost of a retraining run
+- Require human approval and log the decision
+
+#### [day3#retrain-script] A script retrains on a fixed day each month, whatever the data says
+
+*What Wahaj does today*
+
+- It trained challenger A on August's first cut of labels, before the Al-Jabal inspections.
+- It would retrain on the load skew of day 12 if it ran then.
+- It promotes without anyone reading the evidence.
+
+- **A policy says.** when to consider retraining, whether the data is ready, what it costs, and who approves.
+
+#### [day3#trigger-and-labels] A trigger proposes; complete labels and the triage decide
+
+*Lab 3.4 · step 1, from the course's run*
+
+| Date | Signal | Decision | Why |
+| --- | --- | --- | --- |
+| 20 Sep | drift: dust | wait | August labels complete on 2 October |
+| 14 Oct | drift: load | no | skew: fix the data with its owner |
+| 3 Oct | schedule | retrain | August labels complete |
+| 3 Nov | schedule | retrain | September labels complete |
+
+#### [day3#retrain-cost] One retraining run costs 14 node-hours: about 6.3 riyals, of 25.8 left in the budget
+
+*Lab 3.4 · step 2*
+
+**6.31 SAR** extra node-hours on 3 October at the assumed price
+
+- Compute is the small part here.
+- The larger costs: the reviewer's hour, a worse model in one region, a rollback.
+- For a fine-tuned language model the compute line can dominate: estimate before running.
+
+#### [day3#human-approval] The pipeline trains and gates on its own; a person approves the promotion
+
+*Lab 3.4 · step 3*
+
+- retrain pipeline: refused: the requester cannot approve its own request
+- Saqer Al-Dossary: refused: not an approver of fault-risk
+- Lamya Al-Muqbil: approved, with the batch, the trigger, the cost and the gate result
+
+#### [day3#end-to-end] August promotes v4; September stops at validation, before any training
+
+*Lab 3.4 · step 4, from the course's run*
+
+- 2026-08: load · validate · train · gate · approve · promote: v3 → v4
+- 2026-09: load · validate: 36 duplicates, 807 loads out of range, 14 bad region codes
+
+| AUC | all | Al-Sahil | Al-Jabal |
+| --- | --- | --- | --- |
+| champion v3 | 0.837 | 0.738 | 0.877 |
+| challenger v4 | 0.866 | 0.902 | 0.863 |
+
+#### [day3#index-refresh-policy] An index refresh needs a trigger, a ready evaluation, a cost and an approver too
+
+*Stretch · the same policy for Nabd's index*
+
+- Trigger: the manuals' fingerprint changed (v3 to v4).
+- Ready: every changed manual (MM-02, MM-11) has a case in the evaluation set.
+- Then the gate of Lab 2.2, and Saqer approves for field operations.
+
+#### [day3#checkpoint-4] A drift alert on the 20th
+
+*Checkpoint*
+
+**Question:** On 20 September a drift alert fires on dust for August's feeders. August's labels are complete on 2 October; a first cut exists. What does the policy do?
+
+- A. Retrain now on the first cut
+- B. Ignore the alert: the schedule will retrain anyway
+- C. Lower the champion's threshold until labels arrive
+- D. Wait for the complete labels, then retrain and gate
+
+#### [day3#lab-3-4] A retraining trigger with a cost and an approval
+
+Lab 3.4 · 25 min
+
+Write the retraining trigger with a cost estimate and a human approval, and test it end to end: the drifted batch promotes a new champion, the corrupt batch stops, both with registry lineage.
+
+[D3_4_retraining_policy.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_4_retraining_policy.ipynb)
+
+- [ ] Drift or schedule, and labels ready (6 min)
+- [ ] The cost estimate (5 min)
+- [ ] Human approval (5 min)
+- [ ] Test on the drifted and the corrupt batch (9 min)
+- [ ] ✱ Stretch: Treat the manuals index refresh as a release under the same policy
+
+#### [day3#day-3-recap] Traces find the slow step, tuned monitors find real shifts, a calibrated sample measures quality, a policy decides retraining
+
+*Day 3 recap*
+
+- **Traces.** 338 → 82 ms
+- **Monitors.** 51 → 2 alerts
+- **Online evaluation.** 0.29 raw, 0.15 corrected
+- **Retraining.** labels, cost, approval
+
+#### [day3#tomorrow-agents] Operate agents: one versioned bundle, durable state, a replayed incident and a kill switch
+
+*Tomorrow · Day 4*
+
+Tomorrow Mubadir closes a ticket on stale data, creates duplicates after a crash and loops on a pending outage. You replay, fix and stop it.

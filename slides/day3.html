@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-ax="deck" data-track="ai-engineering">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 3 · Observe · Operating Machine Learning and Language Model Systems</title>
+<meta name="generator" content="SDAIA Academy engine 1.0.0">
+<link rel="icon" href="../_engine/icon.svg">
+<link rel="alternate" type="text/markdown" href="day3.md">
+<link rel="describedby" href="../llms.txt">
+<link rel="stylesheet" href="../_engine/academy.css">
+</head>
+<body>
+<div class="deck" data-course="Operating Machine Learning and Language Model Systems" data-track="ai-engineering" data-day="Day 3">
+<!-- ======================= OPENING ======================= -->
+<section class="slide title" id="title" data-auto="title" data-label="Welcome" data-n="1">
+  <div class="kicker">SDAIA Academy · Operating Machine Learning and Language Model Systems</div>
+  <h1>Observe</h1>
+  <p class="lead mt">Day 3: Spans for every step, drift monitors that do not cry wolf, online evaluation with a review queue, and a retraining policy</p>
+  <div class="meta"><span class="track">AI Engineering Track</span><span>4 teaching days + capstone day</span><span>4 sessions · 4 labs</span><span>AE-305</span></div>
+  <aside class="notes"><p>Yesterday was about getting changes out safely. Today is about seeing what the three systems do once they run: where the time goes, when the inputs move, how good the answers are, and when to retrain.</p></aside>
+</section>
+
+<section class="slide" id="agenda" data-auto="agenda" data-label="Agenda" data-n="2">
+  <div class="kicker">Today</div>
+  <h2>Observe</h2>
+  <div class="agenda"><div class="item"><div><b>Session 1 · Tracing requests end to end</b><small>One trace per request with spans for retrieval, the model and each tool</small></div></div><div class="item"><div><b>Session 2 · Drift, skew and delayed labels</b><small>Monitors on inputs while labels are late, tuned so that a real shift alerts and a noisy day does not</small></div></div><div class="item"><div><b>Session 3 · Online evaluation and review queues</b><small>Sample live traces, grade them with a calibrated grader, correct for its errors and send failures to people</small></div></div><div class="item"><div><b>Session 4 · Retraining and refresh policies</b><small>Retrain on a trigger only when labels are ready, the cost is known and a person approves</small></div></div></div>
+</section>
+
+<section class="slide" id="review-day-2" data-lo="LO3" data-n="3">
+  <div class="kicker">Review of Day 2</div>
+  <h2>Which evidence rolled the canary back?</h2>
+  <div class="quiz" data-type="single" data-lo="LO3" data-id="review-day-2-q1">
+    <p class="lead">A new snapshot passed the offline gate and its shadow run, then the canary at 25% rolled back. What made the difference?</p>
+    <div class="opts">
+      <div class="opt" data-why="The gate's cases did not change between the two runs" data-k="A">The offline gate was run again with more cases</div>
+      <div class="opt" data-ok data-k="B">Real traffic at 25% included the Arabic-heavy shift the earlier evidence never saw</div>
+      <div class="opt" data-why="The shadow looked better than stable; it did not trigger anything" data-k="C">The shadow run had failed and was ignored</div>
+      <div class="opt" data-why="A canary has no reviewer in the loop; the trigger acted on its own" data-k="D">A reviewer refused the release at 25%</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Each instrument only tests the traffic it sees. The canary's analysis saw 43% Arabic requests and its latency trigger fired.</div>
+  </div>
+  <aside class="notes"><p>Answer: B. Two minutes. Link to today: tracing would have shown where the extra latency came from.</p></aside>
+</section>
+
+<!-- ======================= SESSION 1 ======================= -->
+<section class="slide section" id="s1" data-auto="section" data-session="1" data-n="4">
+  <div class="kicker">Session 1</div>
+  <h1>Tracing requests end to end</h1>
+  <ul class="bullets outcomes"><li>Add spans with attributes for retrieval, model and tool calls</li><li>Find the slowest step from the traces</li><li>Keep personal data out of span attributes</li></ul>
+  <div class="sess-no">01</div>
+</section>
+
+<section class="slide" data-label="Nabd is slow" id="nabd-is-slow" data-lo="LO4" data-n="5" data-session="1">
+  <div class="kicker">The complaint</div>
+  <h2>Crews say Nabd is slow, and everyone blames the model</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>A request runs four kinds of step: retrieval, a model call, a tool call, a second model call.</li>
+      <li>Logs say the request took long. They do not say which step.</li>
+      <li>A trace records every step of one request as a span, with its parent, its duration and its attributes.</li>
+    </ul>
+    <div class="card c-coral flat"><h4>Guessing costs</h4><p class="small mb0">Swapping to a faster model would have cost a release, an evaluation and a gate, and fixed nothing.</p></div>
+  </div>
+  <aside class="notes"><p>Ask the room where they would look first. Most say the model. Keep the answers on the board and come back to them after the lab.</p></aside>
+</section>
+
+<section class="slide" data-label="Spans" id="trace-and-spans" data-lo="LO4" data-n="6" data-session="1">
+  <div class="kicker">Traces and spans</div>
+  <h2>One trace per request; one span per step, nested under the request</h2>
+  <div class="trace s">
+    <div class="ev call"><b>invoke_agent Nabd</b>497 ms · release nabd-2026.10.1</div>
+    <div class="ev result"><b>· retrieval manuals</b>257 ms · index v3 · 3 hits</div>
+    <div class="ev result"><b>· chat steady</b>81 ms · 329 tokens in, 16 out</div>
+    <div class="ev result"><b>· execute_tool get_feeder_status</b>78 ms</div>
+    <div class="ev result"><b>· chat steady</b>80 ms · 369 tokens in, 15 out</div>
+  </div>
+  <p class="small mt">"What is the status of feeder F-0213?", from the course's run with the production configuration and the scripted stand-in model.</p>
+  <aside class="notes"><p>The stand-in model answers in about 80 ms; a hosted model takes seconds, which would shift the shares but not the retrieval time. Point at retrieval: more than half of the request before the model is even called.</p></aside>
+</section>
+
+<section class="slide" data-label="Conventions" id="genai-conventions" data-lo="LO4" data-n="7" data-session="1">
+  <div class="kicker">OpenTelemetry GenAI semantic conventions</div>
+  <h2>Name spans and attributes the way back ends already understand</h2>
+  <table class="t small">
+    <tr><th>Operation</th><th>Span name</th><th>Attributes</th></tr>
+    <tr><td>invoke_agent</td><td>invoke_agent Nabd</td><td>gen_ai.agent.name</td></tr>
+    <tr><td>retrieval</td><td>retrieval manuals</td><td>the index version, the hits</td></tr>
+    <tr><td>chat</td><td>chat steady</td><td>gen_ai.request.model, gen_ai.response.model, gen_ai.usage.input_tokens and output_tokens</td></tr>
+    <tr><td>execute_tool</td><td>execute_tool get_feeder_status</td><td>gen_ai.tool.name, an error status</td></tr>
+  </table>
+  <div class="callout warn small mt"><b>Status: Development.</b> The conventions moved to their own repository and can still change. Pin the version you follow.</div>
+  <aside class="notes"><p>Source: OpenTelemetry semantic conventions for generative AI (checked November 2026). Recording the response model is how Day 1's unrecorded snapshot change would have shown up on every span.</p></aside>
+</section>
+
+<section class="slide" data-label="Tracer" id="tracer-and-exporter" data-lo="LO4" data-n="8" data-session="1">
+  <div class="kicker">Lab 3.1 · steps 1 and 2</div>
+  <h2>A provider, a processor, an exporter, then a span around each step</h2>
+  <pre class="code s" data-file="Lab 3.1"><code class="language-python">exporter = InMemorySpanExporter()           <span class="hljs-comment"># production: OTLP to a collector</span>
+provider = TracerProvider()
+provider.add_span_processor(SimpleSpanProcessor(exporter))
+tracer = provider.get_tracer(<span class="hljs-string">&quot;wahaj.nabd&quot;</span>)
+
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">TracedNabd</span>(nabd.Nabd):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">retrieve</span>(<span class="hljs-params">self, question</span>):
+        <span class="hljs-keyword">with</span> tracer.start_as_current_span(<span class="hljs-string">&quot;retrieval manuals&quot;</span>) <span class="hljs-keyword">as</span> span:
+            span.set_attribute(<span class="hljs-string">&quot;gen_ai.operation.name&quot;</span>, <span class="hljs-string">&quot;retrieval&quot;</span>)
+            <span class="hljs-keyword">return</span> <span class="hljs-built_in">super</span>().retrieve(question)</code></pre>
+  <aside class="notes"><p>In production a BatchSpanProcessor and an OTLP exporter send spans to a collector; Jaeger, Grafana Tempo, Langfuse and Phoenix accept OTLP. The lab keeps spans in memory so nothing leaves the laptop and no account is needed.</p></aside>
+</section>
+
+<section class="slide" data-label="Breakdown" id="time-breakdown" data-lo="LO4" data-n="9" data-session="1">
+  <div class="kicker">Lab 3.1 · step 3, from the course's run</div>
+  <h2>Retrieval took 71% of the request time, the model 27%</h2>
+  <div class="bars">
+    <div class="row"><span>retrieval</span><div class="bar c-coral" style="--w:71%"></div><span class="val">0.71</span></div>
+    <div class="row"><span>chat</span><div class="bar c-teal" style="--w:27%"></div><span class="val">0.27</span></div>
+    <div class="row"><span>execute_tool</span><div class="bar c-cyan" style="--w:2%"></div><span class="val">0.02</span></div>
+  </div>
+  <p class="small mt">Ten crew questions; median request 338 ms. The production configuration has <code>cache_index=False</code>: the index is fetched from storage and rebuilt on every request.</p>
+  <aside class="notes"><p>The setting was changed during a September incident and never set back: a configuration change outside any release, the same pattern as Day 1. Ask: which part of the release unit should have recorded it? The configuration.</p></aside>
+</section>
+
+<section class="slide" data-label="Fixed" id="measure-again" data-lo="LO4" data-n="10" data-session="1">
+  <div class="kicker">Lab 3.1 · step 4</div>
+  <h2>Cache the index once per process, then measure again with the same spans</h2>
+  <div class="cols cols-2">
+    <div class="stat"><div class="big">338 → 82 ms</div><div class="lbl">median request, ten questions</div></div>
+    <div class="stat"><div class="big">0.71 → 0.005</div><div class="lbl">retrieval's share of request time</div></div>
+  </div>
+  <div class="callout tip small mt"><b>Same instrument, before and after.</b> A fix is shown by the measurement that found the problem, not by a feeling that it is faster.</div>
+  <aside class="notes"><p>Write the result to the release log as a configuration release: cache_index back to true, with the latency evidence. With a hosted model the median would fall by the same quarter of a second.</p></aside>
+</section>
+
+<section class="slide" data-label="Personal data" id="no-pii-in-spans" data-lo="LO4" data-n="11" data-session="1">
+  <div class="kicker">What not to record</div>
+  <h2>Spans travel far: keep questions and answers out, or redact them first</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>Traces are copied to a collector and kept for weeks, read by people outside the team.</li>
+      <li>Crew questions sometimes hold a customer's phone, account number or national ID.</li>
+      <li>Record content only when a purpose needs it, and redact before it is recorded.</li>
+    </ul>
+    <pre class="code s" data-file="stretch"><code class="language-text">Outage on F-0213; customer called from [phone]
+about account [account], ID [national-id].</code></pre>
+  </div>
+  <aside class="notes"><p>PDPL: personal data is collected for a stated purpose and no more than it needs. The Data Management and Personal Data Protection Standards set the controls. Session 3 applies the same redaction to stored traces.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-1" data-lo="LO4" data-n="12" data-session="1">
+  <div class="kicker">Checkpoint</div>
+  <h2>Where the time goes</h2>
+  <div class="quiz" data-type="single" data-lo="LO4" data-id="checkpoint-1-q1">
+    <p class="lead">A trace of a slow Nabd request shows the retrieval span at 260 ms and each model span at 80 ms. The team proposes a faster model. What do you say?</p>
+    <div class="opts">
+      <div class="opt" data-why="Optimises the step that is not the bottleneck" data-k="A">Agree: model calls are usually the slow part</div>
+      <div class="opt" data-why="More data does not change what the spans already show" data-k="B">Collect a month of traces before deciding</div>
+      <div class="opt" data-why="Adds capacity without removing the repeated work" data-k="C">Add more replicas of Nabd</div>
+      <div class="opt" data-ok data-k="D">Fix retrieval first, then measure again with the same spans</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The trace shows retrieval as the largest step; a faster model would cut a smaller part and cost a release.</div>
+  </div>
+  <aside class="notes"><p>Answer: D.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-3-1" data-auto="lab" data-lab="3.1" data-label="Lab 3.1" data-n="13" data-session="1">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 3.1 · 25 min</div><h2>Spans for Nabd and the slowest step</h2><p class="lead small">Instrument Nabd with OpenTelemetry spans for retrieval, model and tool calls, run ten crew questions, find the slowest step, fix it and measure again.</p><a class="nb" href="../labs/D3_1_tracing.ipynb">D3_1_tracing.ipynb</a></div><ul class="checklist"><li>A tracer with an in-memory exporter <span class="min">4 min</span></li><li>Spans for retrieval, model and tool <span class="min">9 min</span></li><li>Ten requests and the slowest step <span class="min">7 min</span></li><li>Fix it and measure again <span class="min">5 min</span></li><li class="stretch">✱ Stretch: Redact phone numbers and account numbers in span attributes</li></ul></div>
+  <aside class="notes"><p>Usual problems: forgetting to return the parent's result inside the with block; creating a new tracer provider per request; recording the whole prompt as an attribute. The parent of each step span must be the invoke_agent span: check that the trace prints as a tree.</p></aside>
+</section>
+
+<!-- ======================= SESSION 2 ======================= -->
+<section class="slide section" id="s2" data-auto="section" data-session="2" data-n="14">
+  <div class="kicker">Session 2</div>
+  <h1>Drift, skew and delayed labels</h1>
+  <ul class="bullets outcomes"><li>Compute a drift statistic per feature per day</li><li>Tell drift from training and serving skew</li><li>Tune thresholds and persistence to remove false alarms</li></ul>
+  <div class="sess-no">02</div>
+</section>
+
+<section class="slide" data-label="Late labels" id="labels-arrive-late" data-lo="LO4" data-n="15" data-session="2">
+  <div class="kicker">Why watch inputs</div>
+  <h2>A fault is known 30 days after the score, and later in the mountains</h2>
+  <div class="flow">
+    <div class="step c-navy"><b>Day 0</b>the feeder is scored</div>
+    <div class="arrow">→</div>
+    <div class="step c-teal"><b>Day 30</b>most labels known</div>
+    <div class="arrow">→</div>
+    <div class="step c-coral"><b>About day 60</b>Al-Jabal inspections entered</div>
+  </div>
+  <p class="small mt">Until the labels arrive, the only signals are the inputs and the scores. A first cut of the labels is not the truth: Lab 1.4's challenger A learned from one.</p>
+  <aside class="notes"><p>Mountain access is slow, so the most wooded Al-Jabal feeders are inspected last. Delayed labels are not missing at random; they are missing where the risk is highest.</p></aside>
+</section>
+
+<section class="slide" data-label="PSI" id="psi" data-lo="LO4" data-n="16" data-session="2">
+  <div class="kicker">A drift statistic</div>
+  <h2>The population stability index compares a day's distribution with a reference</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="Lab 3.2"><code class="language-python">edges = quantiles(reference, deciles)
+ref = share of reference per <span class="hljs-built_in">bin</span>
+cur = share of today per <span class="hljs-built_in">bin</span>
+psi = <span class="hljs-built_in">sum</span>((cur - ref) * ln(cur / ref))</code></pre>
+    <table class="t small">
+      <tr><th>PSI</th><th>Rule of thumb</th></tr>
+      <tr><td>below 0.1</td><td>stable</td></tr>
+      <tr><td>0.1 to 0.25</td><td>a moderate move</td></tr>
+      <tr><td>above 0.25</td><td>a large move</td></tr>
+    </table>
+  </div>
+  <aside class="notes"><p>PSI is one choice; the Kolmogorov-Smirnov statistic and the Wasserstein distance are others. The rules of thumb come from credit scoring and are starting points, not laws: Session 2's lab tunes them on a replayed month.</p></aside>
+</section>
+
+<section class="slide" data-label="Naive" id="naive-alerts" data-lo="LO4" data-n="17" data-session="2">
+  <div class="kicker">Lab 3.2 · steps 1 and 2, from the course's run</div>
+  <h2>PSI above 0.1 against the first week: 51 alerts in 23 days</h2>
+  <div class="bars">
+    <div class="row"><span>temperature</span><div class="bar c-amber" style="--w:87%"></div><span class="val">20</span></div>
+    <div class="row"><span>load</span><div class="bar c-coral" style="--w:87%"></div><span class="val">20</span></div>
+    <div class="row"><span>dust</span><div class="bar c-teal" style="--w:48%"></div><span class="val">11</span></div>
+  </div>
+  <p class="small mt">The heat spike of day 8, the quiet day 17 (120 feeders) and October's seasonal cooling all alert, next to the two real shifts.</p>
+  <aside class="notes"><p>A monitor that alerts every day is switched off within a week. The model was trained on a full year, so October cooling is not new to it.</p></aside>
+</section>
+
+<section class="slide" data-label="Three rules" id="three-tuning-rules" data-lo="LO4" data-n="18" data-session="2">
+  <div class="kicker">Lab 3.2 · step 3</div>
+  <h2>Each tuning rule removes one kind of false alarm</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Rolling reference</h4><p class="small mb0">The previous seven days: the season is absorbed, a step is not.</p></div>
+    <div class="card c-cyan"><h4>Minimum sample</h4><p class="small mb0">Fewer than 200 feeders: not judged.</p></div>
+    <div class="card c-coral"><h4>Persistence</h4><p class="small mb0">Above 0.2 on three judged days in a row.</p></div>
+  </div>
+  <div class="stat mt"><div class="big">51 → 2</div><div class="lbl">alerts: load from day 12 (fired day 14), dust from day 22 (fired day 24)</div></div>
+  <aside class="notes"><p>Persistence costs two days of delay. Ask: is two days acceptable for a classifier scored daily and labelled 30 days later? For a fraud model it might not be.</p></aside>
+</section>
+
+<section class="slide" data-label="Skew" id="drift-or-skew" data-lo="LO4" data-n="19" data-session="2">
+  <div class="kicker">Drift or skew</div>
+  <h2>Load stepped up about 10% overnight while temperatures fell: the meters changed, not the grid</h2>
+  <div class="cols cols-2">
+    <div class="card c-coral flat"><h4>Skew</h4><p class="small mb0">Serving computes a feature differently from training. Here: recalibrated meters read high from day 12. Fix the data; retraining would learn the error.</p></div>
+    <div class="card c-teal flat"><h4>Drift</h4><p class="small mb0">The world changes. Here: dust rises from day 21. Watch the labels and consider retraining when they arrive.</p></div>
+  </div>
+  <p class="small mt">Stretch: the median ratio of serving load to the same feeder's batch load steps by about 10% on day 12.</p>
+  <aside class="notes"><p>The ratio is about 0.93 on days 9 to 11 and about 1.03 from day 12. Who to call: the SCADA export team, the same owner as Day 1's data contract.</p></aside>
+</section>
+
+<section class="slide" data-label="Blind spot" id="rolling-blind-spot" data-lo="LO4" data-n="20" data-session="2">
+  <div class="kicker">What the tuned monitor cannot see</div>
+  <h2>A rolling reference absorbs a slow drift, so keep one fixed comparison too</h2>
+  <ul class="bullets small">
+    <li>Daily: rolling seven-day reference, for steps and fast changes.</li>
+    <li>Monthly: against the training snapshot, for slow moves that matter.</li>
+    <li>When labels arrive: the model's own metrics by region, which inputs cannot replace.</li>
+  </ul>
+  <div class="callout tip small mt"><b>Three files leave the lab.</b> The dashboard (PSI per feature per day, with the threshold and the alerts), the alert rules, and the note: shifts found, alarms removed and by which rule, what is no longer visible. Lamya signs the note.</div>
+  <aside class="notes"><p>Inputs can move without hurting the model, and the model can fail with stable inputs. Session 4 turns the alerts into a retraining decision. The lab draws the dashboard as one image and writes the rules as a JSON file, so both run anywhere; in production the same series go to Prometheus and Grafana, or to a tool such as Evidently, and the rules become alert rules there.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-2" data-lo="LO4" data-n="21" data-session="2">
+  <div class="kicker">Checkpoint</div>
+  <h2>One hot day</h2>
+  <div class="quiz" data-type="single" data-lo="LO4" data-id="checkpoint-2-q1">
+    <p class="lead">Temperature's PSI is 1.56 on day 8, then below 0.1 the next day. The monitor needs three days in a row above 0.2. What happens, and is it right?</p>
+    <div class="opts">
+      <div class="opt" data-why="Ignores the persistence rule the monitor was given" data-k="A">An alert fires: 1.56 is far above 0.2</div>
+      <div class="opt" data-ok data-k="B">No alert: a one-day heat spike is weather, and it is logged</div>
+      <div class="opt" data-why="Treats a monitor's quiet as a fault in the monitor" data-k="C">The monitor is broken and must be retuned</div>
+      <div class="opt" data-why="Changes the model for a single day of weather" data-k="D">Retrain to include the hot day</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Persistence is there for exactly this: a single extreme day is not a shift.</div>
+  </div>
+  <aside class="notes"><p>Answer: B.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-3-2" data-auto="lab" data-lab="3.2" data-label="Lab 3.2" data-n="22" data-session="2">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 3.2 · 25 min</div><h2>Two shifts in a replayed month</h2><p class="lead small">Replay a month of classifier inputs with two planted shifts, alert naively and count the false alarms, then tune the threshold and persistence until only the two shifts alert.</p><a class="nb" href="../labs/D3_2_drift_monitors.ipynb">D3_2_drift_monitors.ipynb</a></div><ul class="checklist"><li>Drift per feature per day <span class="min">7 min</span></li><li>Naive alerts and their false alarms <span class="min">5 min</span></li><li>Tune threshold and persistence <span class="min">8 min</span></li><li>The note: shifts found, alarms removed <span class="min">5 min</span></li><li class="stretch">✱ Stretch: Measure skew between the training snapshot and serving for one feature</li></ul></div>
+  <aside class="notes"><p>Usual problems: bins cut on the current day instead of the reference; a zero share making the log infinite (clip it); a quiet day breaking a persistence run (it should neither extend nor break it). Ask early finishers to try persist=1 and threshold=0.1 to see which false alarm returns first.</p></aside>
+</section>
+
+<!-- ======================= SESSION 3 ======================= -->
+<section class="slide section" id="s3" data-auto="section" data-session="3" data-n="23">
+  <div class="kicker">Session 3</div>
+  <h1>Online evaluation and review queues</h1>
+  <ul class="bullets outcomes"><li>Redact traces before storage and apply a retention rule</li><li>Grade a sample with a calibrated grader and correct the rate</li><li>Route failures and uncertain cases to a review queue</li></ul>
+  <div class="sess-no">03</div>
+</section>
+
+<section class="slide" data-label="Online" id="offline-and-online" data-lo="LO4" data-n="24" data-session="3">
+  <div class="kicker">Online evaluation</div>
+  <h2>The gate checks 24 cases once; Nabd answers hundreds of questions a day</h2>
+  <div class="flow">
+    <div class="step c-navy"><b>Record</b>traces, redacted</div>
+    <div class="arrow">→</div>
+    <div class="step c-teal"><b>Sample</b>a fixed number, seeded</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>Grade</b>the calibrated grader</div>
+    <div class="arrow">→</div>
+    <div class="step c-coral"><b>Correct</b>for the grader's errors</div>
+    <div class="arrow">→</div>
+    <div class="step c-purple"><b>Review</b>failures and a few passes</div>
+  </div>
+  <aside class="notes"><p>Building and calibrating the grader is AE-303's subject; here it is an instrument with known sensitivity and specificity. The lab uses one week: 400 traces, 150 of them labelled by reviewers.</p></aside>
+</section>
+
+<section class="slide" data-label="Redact" id="redact-before-storage" data-lo="LO4" data-n="25" data-session="3">
+  <div class="kicker">Lab 3.3 · step 1</div>
+  <h2>Redact before the trace is stored, not before it is displayed</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="Lab 3.3"><code class="language-python"><span class="hljs-string">&quot;The customer [name] called from [phone].&quot;</span>
+<span class="hljs-string">&quot;Account [account], national ID [national-id].&quot;</span></code></pre>
+    <ul class="bullets small">
+      <li>87 of 400 questions held personal data.</li>
+      <li>Grading needs the answer and the context, not the customer.</li>
+      <li>Data never stored needs no access control and no deletion.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>PDPL and the Data Management and Personal Data Protection Standards. Patterns cover Saudi mobile numbers, account numbers and ten-digit national IDs; names are the hard part, here caught by the phrase that introduces them. In production, test the redaction with a set of known examples and alert when a pattern appears after it.</p></aside>
+</section>
+
+<section class="slide" data-label="Raw rate" id="raw-rate" data-lo="LO4" data-n="26" data-session="3">
+  <div class="kicker">Lab 3.3 · steps 2 and 3, from the course's run</div>
+  <h2>The grader fails 29 of 100 sampled answers</h2>
+  <div class="cols cols-2">
+    <div class="stat"><div class="big">0.29</div><div class="lbl">raw failure rate, 95% interval 0.21 to 0.39</div></div>
+    <ul class="bullets small">
+      <li>Some failures are good answers with a polite closing sentence the grader cannot find in the manual.</li>
+      <li>Some passes are bad: the right words with a wrong number.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>Ask: would you report 29% to Saqer as Nabd's failure rate? The next slide corrects it.</p></aside>
+</section>
+
+<section class="slide" data-label="Correct" id="rogan-gladen" data-lo="LO4" data-n="27" data-session="3">
+  <div class="kicker">Lab 3.3 · step 4</div>
+  <h2>Correct the raw rate with the grader's sensitivity and specificity</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="Rogan-Gladen"><code class="language-text">true = (raw + sp - 1) / (se + sp - 1)
+     = (0.29 + 0.817 - 1) / (0.90 + 0.817 - 1)
+     = 0.15</code></pre>
+    <table class="t small">
+      <tr><th>On 150 labelled traces</th><th class="num">value</th></tr>
+      <tr><td>sensitivity: bad answers failed</td><td class="num">0.90</td></tr>
+      <tr><td>specificity: good answers passed</td><td class="num">0.82</td></tr>
+      <tr class="hl"><td>corrected failure rate</td><td class="num">0.15</td></tr>
+      <tr><td>true rate in the sample</td><td class="num">0.17</td></tr>
+    </table>
+  </div>
+  <aside class="notes"><p>The true rate is known only because the data is invented. The correction is an estimate with an error of several points from both the sample and the calibration set: report it with the raw rate and the sample sizes.</p></aside>
+</section>
+
+<section class="slide" data-label="Queue" id="review-queue" data-lo="LO4" data-n="28" data-session="3">
+  <div class="kicker">Routing</div>
+  <h2>Every failure and one pass in ten go to the reviewers' queue</h2>
+  <div class="cols cols-2">
+    <div class="stat"><div class="big">32</div><div class="lbl">traces for review from a sample of 100</div></div>
+    <ul class="bullets small">
+      <li>Failures: confirm or overturn; each overturn is a calibration label.</li>
+      <li>Random passes: what the grader lets through.</li>
+      <li>Each review returns to the calibration set, so the grader's numbers stay current.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>Saqer's reviewers have a fixed hour a day: size the sample so the queue fits the hour. The queue CSV holds the redacted question, never the original.</p></aside>
+</section>
+
+<section class="slide" data-label="Retention" id="retention" data-lo="LO4" data-n="29" data-session="3">
+  <div class="kicker">Stretch · retention</div>
+  <h2>Keep traces for a stated time, longer only while a reviewer needs them</h2>
+  <ul class="bullets small">
+    <li>Wahaj's rule in the lab: redacted traces kept 3 days for debugging; those in the review queue held until reviewed.</li>
+    <li>On day 7: 221 traces deleted, 179 kept, 32 of them held for review.</li>
+    <li>PDPL Article 18: personal data is destroyed once it is no longer needed for its purpose.</li>
+  </ul>
+  <aside class="notes"><p>The three-day period is the course's assumption, not a legal figure: the data protection officer (Nouf Al-Sadhan in the case) sets it with the system owner.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-3" data-lo="LO4" data-n="30" data-session="3">
+  <div class="kicker">Checkpoint</div>
+  <h2>A grader's rate</h2>
+  <div class="quiz" data-type="single" data-lo="LO4" data-id="checkpoint-3-q1">
+    <p class="lead">The grader fails 29% of a sample. On labelled traces it fails 90% of bad answers and passes 82% of good ones. What do you report?</p>
+    <div class="opts">
+      <div class="opt" data-why="Reports the instrument's reading as the quantity it measures" data-k="A">29% of Nabd's answers are wrong</div>
+      <div class="opt" data-why="Divides by sensitivity only and ignores false failures" data-k="B">About 32%: the grader misses a tenth of the bad answers</div>
+      <div class="opt" data-ok data-k="C">About 15% after correction, with the raw rate and the sample sizes</div>
+      <div class="opt" data-why="Discards a usable instrument because it is imperfect" data-k="D">Nothing until every trace is reviewed by hand</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> False failures inflate the raw rate; Rogan-Gladen removes both kinds of error, and the sizes say how far to trust it.</div>
+  </div>
+  <aside class="notes"><p>Answer: C.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-3-3" data-auto="lab" data-lab="3.3" data-label="Lab 3.3" data-n="31" data-session="3">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 3.3 · 25 min</div><h2>Online evaluation and a review queue</h2><p class="lead small">Redact a week of Nabd traces, sample them, score them with the provided calibrated grader, correct the failure rate for the grader's error and route failures to review.</p><a class="nb" href="../labs/D3_3_online_eval.ipynb">D3_3_online_eval.ipynb</a></div><ul class="checklist"><li>Redact before storage <span class="min">6 min</span></li><li>Sample the week <span class="min">4 min</span></li><li>Grade with the calibrated grader <span class="min">6 min</span></li><li>Route to review and correct the rate <span class="min">9 min</span></li><li class="stretch">✱ Stretch: A retention rule that deletes traces past their limit</li></ul></div>
+  <aside class="notes"><p>Usual problems: a regular expression for phone numbers that also eats feeder or account digits; sampling from the calibration traces; computing sensitivity over all traces instead of the bad ones. The answers in the traces are invented and the manuals are not engineering guidance.</p></aside>
+</section>
+
+<!-- ======================= SESSION 4 ======================= -->
+<section class="slide section" id="s4" data-auto="section" data-session="4" data-n="32">
+  <div class="kicker">Session 4</div>
+  <h1>Retraining and refresh policies</h1>
+  <ul class="bullets outcomes"><li>Write a trigger from drift or a schedule that waits for labels</li><li>Estimate the cost of a retraining run</li><li>Require human approval and log the decision</li></ul>
+  <div class="sess-no">04</div>
+</section>
+
+<section class="slide" data-label="Old script" id="retrain-script" data-lo="LO2" data-n="33" data-session="4">
+  <div class="kicker">What Wahaj does today</div>
+  <h2>A script retrains on a fixed day each month, whatever the data says</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>It trained challenger A on August's first cut of labels, before the Al-Jabal inspections.</li>
+      <li>It would retrain on the load skew of day 12 if it ran then.</li>
+      <li>It promotes without anyone reading the evidence.</li>
+    </ul>
+    <div class="card c-teal flat"><h4>A policy says</h4><p class="small mb0">when to consider retraining, whether the data is ready, what it costs, and who approves.</p></div>
+  </div>
+  <aside class="notes"><p>Recap from Day 1: the registry lineage showed the author of challenger A as "scheduled retrain script".</p></aside>
+</section>
+
+<section class="slide" data-label="Trigger" id="trigger-and-labels" data-lo="LO2" data-n="34" data-session="4">
+  <div class="kicker">Lab 3.4 · step 1, from the course's run</div>
+  <h2>A trigger proposes; complete labels and the triage decide</h2>
+  <table class="t small">
+    <tr><th>Date</th><th>Signal</th><th>Decision</th><th>Why</th></tr>
+    <tr><td>20 Sep</td><td>drift: dust</td><td>wait</td><td>August labels complete on 2 October</td></tr>
+    <tr><td>14 Oct</td><td>drift: load</td><td>no</td><td>skew: fix the data with its owner</td></tr>
+    <tr class="hl"><td>3 Oct</td><td>schedule</td><td>retrain</td><td>August labels complete</td></tr>
+    <tr class="hl"><td>3 Nov</td><td>schedule</td><td>retrain</td><td>September labels complete</td></tr>
+  </table>
+  <aside class="notes"><p>The label calendar is part of the policy: 30 days for most feeders, about a month more for Al-Jabal. Ask: which signal would the old script have acted on wrongly? All four.</p></aside>
+</section>
+
+<section class="slide" data-label="Cost" id="retrain-cost" data-lo="LO6" data-n="35" data-session="4">
+  <div class="kicker">Lab 3.4 · step 2</div>
+  <h2>One retraining run costs 14 node-hours: about 6.3 riyals, of 25.8 left in the budget</h2>
+  <div class="cols cols-2">
+    <div class="stat"><div class="big">6.31 SAR</div><div class="lbl">extra node-hours on 3 October at the assumed price</div></div>
+    <ul class="bullets small">
+      <li>Compute is the small part here.</li>
+      <li>The larger costs: the reviewer's hour, a worse model in one region, a rollback.</li>
+      <li>For a fine-tuned language model the compute line can dominate: estimate before running.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>The figure comes from Lab 2.4's October log: 3 October used about 14 node-hours more than a normal day. Prices are course assumptions. Day 2's forecast alert fired on the classifier because of this run: the policy now declares it as a planned job.</p></aside>
+</section>
+
+<section class="slide" data-label="Approval" id="human-approval" data-lo="LO2" data-n="36" data-session="4">
+  <div class="kicker">Lab 3.4 · step 3</div>
+  <h2>The pipeline trains and gates on its own; a person approves the promotion</h2>
+  <div class="trace s">
+    <div class="ev guard"><b>retrain pipeline</b>refused: the requester cannot approve its own request</div>
+    <div class="ev guard"><b>Saqer Al-Dossary</b>refused: not an approver of fault-risk</div>
+    <div class="ev final"><b>Lamya Al-Muqbil</b>approved, with the batch, the trigger, the cost and the gate result</div>
+  </div>
+  <aside class="notes"><p>The approval is recorded as tags on the registry version, so the evidence travels with the model. Same principle as Day 2's production approval: the author does not approve.</p></aside>
+</section>
+
+<section class="slide" data-label="End to end" id="end-to-end" data-lo="LO2" data-n="37" data-session="4">
+  <div class="kicker">Lab 3.4 · step 4, from the course's run</div>
+  <h2>August promotes v4; September stops at validation, before any training</h2>
+  <div class="cols cols-2">
+    <div class="trace s">
+      <div class="ev result"><b>2026-08</b>load · validate · train · gate · approve · promote: v3 → v4</div>
+      <div class="ev error"><b>2026-09</b>load · validate: 36 duplicates, 807 loads out of range, 14 bad region codes</div>
+    </div>
+    <table class="t small">
+      <tr><th>AUC</th><th class="num">all</th><th class="num">Al-Sahil</th><th class="num">Al-Jabal</th></tr>
+      <tr><td>champion v3</td><td class="num">0.837</td><td class="num">0.738</td><td class="num">0.877</td></tr>
+      <tr class="hl"><td>challenger v4</td><td class="num">0.866</td><td class="num">0.902</td><td class="num">0.863</td></tr>
+    </table>
+  </div>
+  <aside class="notes"><p>Quick-mode numbers (fewer trees); the full run gives slightly different values and the same decisions. Al-Jabal is 0.014 lower, inside the 0.03 tolerance. The new version's tags: months, data snapshot, code hash, trigger, cost, approved_by, promoted_from.</p></aside>
+</section>
+
+<section class="slide" data-label="Index refresh" id="index-refresh-policy" data-lo="LO2" data-n="38" data-session="4">
+  <div class="kicker">Stretch · the same policy for Nabd's index</div>
+  <h2>An index refresh needs a trigger, a ready evaluation, a cost and an approver too</h2>
+  <ul class="bullets small">
+    <li>Trigger: the manuals' fingerprint changed (v3 to v4).</li>
+    <li>Ready: every changed manual (MM-02, MM-11) has a case in the evaluation set.</li>
+    <li>Then the gate of Lab 2.2, and Saqer approves for field operations.</li>
+  </ul>
+  <aside class="notes"><p>If a changed manual had no case, the policy says write cases first: the gate cannot detect a regression it has no case for.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-4" data-lo="LO2" data-n="39" data-session="4">
+  <div class="kicker">Checkpoint</div>
+  <h2>A drift alert on the 20th</h2>
+  <div class="quiz" data-type="single" data-lo="LO2" data-id="checkpoint-4-q1">
+    <p class="lead">On 20 September a drift alert fires on dust for August's feeders. August's labels are complete on 2 October; a first cut exists. What does the policy do?</p>
+    <div class="opts">
+      <div class="opt" data-why="Repeats challenger A: learns that uninspected feeders never fault" data-k="A">Retrain now on the first cut</div>
+      <div class="opt" data-why="Discards a real signal instead of scheduling it" data-k="B">Ignore the alert: the schedule will retrain anyway</div>
+      <div class="opt" data-why="Changes the model without new evidence" data-k="C">Lower the champion's threshold until labels arrive</div>
+      <div class="opt" data-ok data-k="D">Wait for the complete labels, then retrain and gate</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The missing labels are the high-risk mountain feeders; a model trained without them learns the gap.</div>
+  </div>
+  <aside class="notes"><p>Answer: D.</p></aside>
+</section>
+
+<section class="slide lab top" id="lab-3-4" data-auto="lab" data-lab="3.4" data-label="Lab 3.4" data-n="40" data-session="4">
+  <div class="cols cols-2 mid"><div><div class="lab-tag">Lab 3.4 · 25 min</div><h2>A retraining trigger with a cost and an approval</h2><p class="lead small">Write the retraining trigger with a cost estimate and a human approval, and test it end to end: the drifted batch promotes a new champion, the corrupt batch stops, both with registry lineage.</p><a class="nb" href="../labs/D3_4_retraining_policy.ipynb">D3_4_retraining_policy.ipynb</a></div><ul class="checklist"><li>Drift or schedule, and labels ready <span class="min">6 min</span></li><li>The cost estimate <span class="min">5 min</span></li><li>Human approval <span class="min">5 min</span></li><li>Test on the drifted and the corrupt batch <span class="min">9 min</span></li><li class="stretch">✱ Stretch: Treat the manuals index refresh as a release under the same policy</li></ul></div>
+  <aside class="notes"><p>The registry takes about a minute to build in quick mode: start the first cell while you introduce the lab. Usual problems: choosing the batch from the signal's month instead of the newest month with complete labels; letting the requester approve; reading lineage from the run log instead of the registry.</p></aside>
+</section>
+
+<!-- ======================= CLOSING ======================= -->
+<section class="slide" data-label="Recap" id="day-3-recap" data-n="41" data-session="4">
+  <div class="kicker">Day 3 recap</div>
+  <h2>Traces find the slow step, tuned monitors find real shifts, a calibrated sample measures quality, a policy decides retraining</h2>
+  <div class="cols cols-4 gap-s">
+    <div class="card c-teal"><h4>Traces</h4><p class="small mb0">338 → 82 ms</p></div>
+    <div class="card c-cyan"><h4>Monitors</h4><p class="small mb0">51 → 2 alerts</p></div>
+    <div class="card c-amber"><h4>Online evaluation</h4><p class="small mb0">0.29 raw, 0.15 corrected</p></div>
+    <div class="card c-coral"><h4>Retraining</h4><p class="small mb0">labels, cost, approval</p></div>
+  </div>
+  <aside class="notes"><p>Observability is 20 of the rubric's 100. The capstone runs this monitor and this pipeline on a new week.</p></aside>
+</section>
+
+<section class="slide dark" data-label="Tomorrow" id="tomorrow-agents" data-n="42" data-session="4">
+  <div class="kicker">Tomorrow · Day 4</div>
+  <h2>Operate agents: one versioned bundle, durable state, a replayed incident and a kill switch</h2>
+  <p class="lead">Tomorrow Mubadir closes a ticket on stale data, creates duplicates after a crash and loops on a pending outage. You replay, fix and stop it.</p>
+  <aside class="notes"><p>Every Day 4 lab starts from its own reference state, so a participant who missed today can follow.</p></aside>
+</section>
+</div>
+<script type="application/json" id="academy-data">{"v":1,"engine":"1.0.0","build":{"at":"2026-11-15T16:00:10Z","version":"2027.1.0","commit":"42f68a3"},"course":{"id":"ae-305","code":"AE-305","title":"Operating Machine Learning and Language Model Systems","track":"ai-engineering","lang":"en","dir":"ltr","url":"https://sdaiaacademy.github.io/ae-305/","repo":"SDAIAAcademy/ae-305","home":"../index.html"},"deck":{"id":"day3","kind":"day","day":3,"label":"Day 3","title":"Observe","prev":"day2.html","next":"day4.html","md":"day3.md","alt":{}},"sessions":[{"n":1,"label":"Session 1","title":"Tracing requests end to end","slide":"s1","outcomes":["Add spans with attributes for retrieval, model and tool calls","Find the slowest step from the traces","Keep personal data out of span attributes"],"minutes":50,"lab":{"id":"3.1","title":"Spans for Nabd and the slowest step","minutes":25,"href":"../labs/D3_1_tracing.ipynb"}},{"n":2,"label":"Session 2","title":"Drift, skew and delayed labels","slide":"s2","outcomes":["Compute a drift statistic per feature per day","Tell drift from training and serving skew","Tune thresholds and persistence to remove false alarms"],"minutes":50,"lab":{"id":"3.2","title":"Two shifts in a replayed month","minutes":25,"href":"../labs/D3_2_drift_monitors.ipynb"}},{"n":3,"label":"Session 3","title":"Online evaluation and review queues","slide":"s3","outcomes":["Redact traces before storage and apply a retention rule","Grade a sample with a calibrated grader and correct the rate","Route failures and uncertain cases to a review queue"],"minutes":50,"lab":{"id":"3.3","title":"Online evaluation and a review queue","minutes":25,"href":"../labs/D3_3_online_eval.ipynb"}},{"n":4,"label":"Session 4","title":"Retraining and refresh policies","slide":"s4","outcomes":["Write a trigger from drift or a schedule that waits for labels","Estimate the cost of a retraining run","Require human approval and log the decision"],"minutes":50,"lab":{"id":"3.4","title":"A retraining trigger with a cost and an approval","minutes":25,"href":"../labs/D3_4_retraining_policy.ipynb"}}],"slides":[{"id":"title","n":1,"title":"Observe","kind":"title","session":0,"hash":"958ee5ba","md":"#### [day3#title] Observe\n\n*SDAIA Academy · Operating Machine Learning and Language Model Systems*\n\nDay 3: Spans for every step, drift monitors that do not cry wolf, online evaluation with a review queue, and a retraining policy\n\nAI Engineering Track · 4 teaching days + capstone day · 4 sessions · 4 labs · AE-305","notes":"Yesterday was about getting changes out safely. Today is about seeing what the three systems do once they run: where the time goes, when the inputs move, how good the answers are, and when to retrain.","minutes":null,"lo":[]},{"id":"agenda","n":2,"title":"Observe","kind":"content","session":0,"hash":"e1f433c5","md":"#### [day3#agenda] Observe\n\n*Today*\n\n- **Session 1 · Tracing requests end to end**: One trace per request with spans for retrieval, the model and each tool\n- **Session 2 · Drift, skew and delayed labels**: Monitors on inputs while labels are late, tuned so that a real shift alerts and a noisy day does not\n- **Session 3 · Online evaluation and review queues**: Sample live traces, grade them with a calibrated grader, correct for its errors and send failures to people\n- **Session 4 · Retraining and refresh policies**: Retrain on a trigger only when labels are ready, the cost is known and a person approves","notes":"","minutes":null,"lo":[]},{"id":"review-day-2","n":3,"title":"Which evidence rolled the canary back?","kind":"quiz","session":0,"hash":"5e20c130","md":"#### [day3#review-day-2] Which evidence rolled the canary back?\n\n*Review of Day 2*\n\n**Question:** A new snapshot passed the offline gate and its shadow run, then the canary at 25% rolled back. What made the difference?\n\n- A. The offline gate was run again with more cases\n- B. Real traffic at 25% included the Arabic-heavy shift the earlier evidence never saw\n- C. The shadow run had failed and was ignored\n- D. A reviewer refused the release at 25%","notes":"Answer: B. Two minutes. Link to today: tracing would have shown where the extra latency came from.","minutes":null,"lo":["LO3"]},{"id":"s1","n":4,"title":"Tracing requests end to end","kind":"section","session":1,"hash":"2edcb63e","md":"#### [day3#s1] Tracing requests end to end\n\n*Session 1*\n\n- Add spans with attributes for retrieval, model and tool calls\n- Find the slowest step from the traces\n- Keep personal data out of span attributes","notes":"","minutes":null,"lo":["LO4"]},{"id":"nabd-is-slow","n":5,"title":"Crews say Nabd is slow, and everyone blames the model","kind":"content","session":1,"hash":"b362a2b6","md":"#### [day3#nabd-is-slow] Crews say Nabd is slow, and everyone blames the model\n\n*The complaint*\n\n- A request runs four kinds of step: retrieval, a model call, a tool call, a second model call.\n- Logs say the request took long. They do not say which step.\n- A trace records every step of one request as a span, with its parent, its duration and its attributes.\n\n- **Guessing costs.** Swapping to a faster model would have cost a release, an evaluation and a gate, and fixed nothing.","notes":"Ask the room where they would look first. Most say the model. Keep the answers on the board and come back to them after the lab.","minutes":null,"lo":["LO4"]},{"id":"trace-and-spans","n":6,"title":"One trace per request; one span per step, nested under the request","kind":"content","session":1,"hash":"b0023632","md":"#### [day3#trace-and-spans] One trace per request; one span per step, nested under the request\n\n*Traces and spans*\n\n- invoke_agent Nabd: 497 ms · release nabd-2026.10.1\n- · retrieval manuals: 257 ms · index v3 · 3 hits\n- · chat steady: 81 ms · 329 tokens in, 16 out\n- · execute_tool get_feeder_status: 78 ms\n- · chat steady: 80 ms · 369 tokens in, 15 out\n\n\"What is the status of feeder F-0213?\", from the course's run with the production configuration and the scripted stand-in model.","notes":"The stand-in model answers in about 80 ms; a hosted model takes seconds, which would shift the shares but not the retrieval time. Point at retrieval: more than half of the request before the model is even called.","minutes":null,"lo":["LO4"]},{"id":"genai-conventions","n":7,"title":"Name spans and attributes the way back ends already understand","kind":"content","session":1,"hash":"cff5e7fc","md":"#### [day3#genai-conventions] Name spans and attributes the way back ends already understand\n\n*OpenTelemetry GenAI semantic conventions*\n\n| Operation | Span name | Attributes |\n| --- | --- | --- |\n| invoke_agent | invoke_agent Nabd | gen_ai.agent.name |\n| retrieval | retrieval manuals | the index version, the hits |\n| chat | chat steady | gen_ai.request.model, gen_ai.response.model, gen_ai.usage.input_tokens and output_tokens |\n| execute_tool | execute_tool get_feeder_status | gen_ai.tool.name, an error status |\n\n> **Status: Development.** The conventions moved to their own repository and can still change. Pin the version you follow.","notes":"Source: OpenTelemetry semantic conventions for generative AI (checked November 2026). Recording the response model is how Day 1's unrecorded snapshot change would have shown up on every span.","minutes":null,"lo":["LO4"]},{"id":"tracer-and-exporter","n":8,"title":"A provider, a processor, an exporter, then a span around each step","kind":"content","session":1,"hash":"2b0c65dd","md":"#### [day3#tracer-and-exporter] A provider, a processor, an exporter, then a span around each step\n\n*Lab 3.1 · steps 1 and 2*\n\n```python\n# file: Lab 3.1\nexporter = InMemorySpanExporter()           # production: OTLP to a collector\nprovider = TracerProvider()\nprovider.add_span_processor(SimpleSpanProcessor(exporter))\ntracer = provider.get_tracer(\"wahaj.nabd\")\n\nclass TracedNabd(nabd.Nabd):\n    def retrieve(self, question):\n        with tracer.start_as_current_span(\"retrieval manuals\") as span:\n            span.set_attribute(\"gen_ai.operation.name\", \"retrieval\")\n            return super().retrieve(question)\n```","notes":"In production a BatchSpanProcessor and an OTLP exporter send spans to a collector; Jaeger, Grafana Tempo, Langfuse and Phoenix accept OTLP. The lab keeps spans in memory so nothing leaves the laptop and no account is needed.","minutes":null,"lo":["LO4"]},{"id":"time-breakdown","n":9,"title":"Retrieval took 71% of the request time, the model 27%","kind":"content","session":1,"hash":"ef1eae2c","md":"#### [day3#time-breakdown] Retrieval took 71% of the request time, the model 27%\n\n*Lab 3.1 · step 3, from the course's run*\n\n| Item | Value |\n| --- | --- |\n| retrieval | 0.71 |\n| chat | 0.27 |\n| execute_tool | 0.02 |\n\nTen crew questions; median request 338 ms. The production configuration has `cache_index=False`: the index is fetched from storage and rebuilt on every request.","notes":"The setting was changed during a September incident and never set back: a configuration change outside any release, the same pattern as Day 1. Ask: which part of the release unit should have recorded it? The configuration.","minutes":null,"lo":["LO4"]},{"id":"measure-again","n":10,"title":"Cache the index once per process, then measure again with the same spans","kind":"content","session":1,"hash":"7386cb29","md":"#### [day3#measure-again] Cache the index once per process, then measure again with the same spans\n\n*Lab 3.1 · step 4*\n\n- **338 → 82 ms** median request, ten questions\n- **0.71 → 0.005** retrieval's share of request time\n\n> **Same instrument, before and after.** A fix is shown by the measurement that found the problem, not by a feeling that it is faster.","notes":"Write the result to the release log as a configuration release: cache_index back to true, with the latency evidence. With a hosted model the median would fall by the same quarter of a second.","minutes":null,"lo":["LO4"]},{"id":"no-pii-in-spans","n":11,"title":"Spans travel far: keep questions and answers out, or redact them first","kind":"content","session":1,"hash":"4826c447","md":"#### [day3#no-pii-in-spans] Spans travel far: keep questions and answers out, or redact them first\n\n*What not to record*\n\n- Traces are copied to a collector and kept for weeks, read by people outside the team.\n- Crew questions sometimes hold a customer's phone, account number or national ID.\n- Record content only when a purpose needs it, and redact before it is recorded.\n\n```text\n# file: stretch\nOutage on F-0213; customer called from [phone]\nabout account [account], ID [national-id].\n```","notes":"PDPL: personal data is collected for a stated purpose and no more than it needs. The Data Management and Personal Data Protection Standards set the controls. Session 3 applies the same redaction to stored traces.","minutes":null,"lo":["LO4"]},{"id":"checkpoint-1","n":12,"title":"Where the time goes","kind":"quiz","session":1,"hash":"ff02029c","md":"#### [day3#checkpoint-1] Where the time goes\n\n*Checkpoint*\n\n**Question:** A trace of a slow Nabd request shows the retrieval span at 260 ms and each model span at 80 ms. The team proposes a faster model. What do you say?\n\n- A. Agree: model calls are usually the slow part\n- B. Collect a month of traces before deciding\n- C. Add more replicas of Nabd\n- D. Fix retrieval first, then measure again with the same spans","notes":"Answer: D.","minutes":null,"lo":["LO4"]},{"id":"lab-3-1","n":13,"title":"Spans for Nabd and the slowest step","kind":"lab","session":1,"hash":"6f3a41a2","md":"#### [day3#lab-3-1] Spans for Nabd and the slowest step\n\nLab 3.1 · 25 min\n\nInstrument Nabd with OpenTelemetry spans for retrieval, model and tool calls, run ten crew questions, find the slowest step, fix it and measure again.\n\n[D3_1_tracing.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_1_tracing.ipynb)\n\n- [ ] A tracer with an in-memory exporter (4 min)\n- [ ] Spans for retrieval, model and tool (9 min)\n- [ ] Ten requests and the slowest step (7 min)\n- [ ] Fix it and measure again (5 min)\n- [ ] ✱ Stretch: Redact phone numbers and account numbers in span attributes","notes":"Usual problems: forgetting to return the parent's result inside the with block; creating a new tracer provider per request; recording the whole prompt as an attribute. The parent of each step span must be the invoke_agent span: check that the trace prints as a tree.","minutes":null,"lo":[]},{"id":"s2","n":14,"title":"Drift, skew and delayed labels","kind":"section","session":2,"hash":"2a03e2ca","md":"#### [day3#s2] Drift, skew and delayed labels\n\n*Session 2*\n\n- Compute a drift statistic per feature per day\n- Tell drift from training and serving skew\n- Tune thresholds and persistence to remove false alarms","notes":"","minutes":null,"lo":["LO4"]},{"id":"labels-arrive-late","n":15,"title":"A fault is known 30 days after the score, and later in the mountains","kind":"content","session":2,"hash":"35c2dbc4","md":"#### [day3#labels-arrive-late] A fault is known 30 days after the score, and later in the mountains\n\n*Why watch inputs*\n\n**Day 0** the feeder is scored → **Day 30** most labels known → **About day 60** Al-Jabal inspections entered\n\nUntil the labels arrive, the only signals are the inputs and the scores. A first cut of the labels is not the truth: Lab 1.4's challenger A learned from one.","notes":"Mountain access is slow, so the most wooded Al-Jabal feeders are inspected last. Delayed labels are not missing at random; they are missing where the risk is highest.","minutes":null,"lo":["LO4"]},{"id":"psi","n":16,"title":"The population stability index compares a day's distribution with a reference","kind":"content","session":2,"hash":"6d68c880","md":"#### [day3#psi] The population stability index compares a day's distribution with a reference\n\n*A drift statistic*\n\n```python\n# file: Lab 3.2\nedges = quantiles(reference, deciles)\nref = share of reference per bin\ncur = share of today per bin\npsi = sum((cur - ref) * ln(cur / ref))\n```\n\n| PSI | Rule of thumb |\n| --- | --- |\n| below 0.1 | stable |\n| 0.1 to 0.25 | a moderate move |\n| above 0.25 | a large move |","notes":"PSI is one choice; the Kolmogorov-Smirnov statistic and the Wasserstein distance are others. The rules of thumb come from credit scoring and are starting points, not laws: Session 2's lab tunes them on a replayed month.","minutes":null,"lo":["LO4"]},{"id":"naive-alerts","n":17,"title":"PSI above 0.1 against the first week: 51 alerts in 23 days","kind":"content","session":2,"hash":"85cecc3a","md":"#### [day3#naive-alerts] PSI above 0.1 against the first week: 51 alerts in 23 days\n\n*Lab 3.2 · steps 1 and 2, from the course's run*\n\n| Item | Value |\n| --- | --- |\n| temperature | 20 |\n| load | 20 |\n| dust | 11 |\n\nThe heat spike of day 8, the quiet day 17 (120 feeders) and October's seasonal cooling all alert, next to the two real shifts.","notes":"A monitor that alerts every day is switched off within a week. The model was trained on a full year, so October cooling is not new to it.","minutes":null,"lo":["LO4"]},{"id":"three-tuning-rules","n":18,"title":"Each tuning rule removes one kind of false alarm","kind":"content","session":2,"hash":"63d181a7","md":"#### [day3#three-tuning-rules] Each tuning rule removes one kind of false alarm\n\n*Lab 3.2 · step 3*\n\n- **Rolling reference.** The previous seven days: the season is absorbed, a step is not.\n- **Minimum sample.** Fewer than 200 feeders: not judged.\n- **Persistence.** Above 0.2 on three judged days in a row.\n\n**51 → 2** alerts: load from day 12 (fired day 14), dust from day 22 (fired day 24)","notes":"Persistence costs two days of delay. Ask: is two days acceptable for a classifier scored daily and labelled 30 days later? For a fraud model it might not be.","minutes":null,"lo":["LO4"]},{"id":"drift-or-skew","n":19,"title":"Load stepped up about 10% overnight while temperatures fell: the meters changed, not the grid","kind":"content","session":2,"hash":"c0a28881","md":"#### [day3#drift-or-skew] Load stepped up about 10% overnight while temperatures fell: the meters changed, not the grid\n\n*Drift or skew*\n\n- **Skew.** Serving computes a feature differently from training. Here: recalibrated meters read high from day 12. Fix the data; retraining would learn the error.\n- **Drift.** The world changes. Here: dust rises from day 21. Watch the labels and consider retraining when they arrive.\n\nStretch: the median ratio of serving load to the same feeder's batch load steps by about 10% on day 12.","notes":"The ratio is about 0.93 on days 9 to 11 and about 1.03 from day 12. Who to call: the SCADA export team, the same owner as Day 1's data contract.","minutes":null,"lo":["LO4"]},{"id":"rolling-blind-spot","n":20,"title":"A rolling reference absorbs a slow drift, so keep one fixed comparison too","kind":"content","session":2,"hash":"60188a6f","md":"#### [day3#rolling-blind-spot] A rolling reference absorbs a slow drift, so keep one fixed comparison too\n\n*What the tuned monitor cannot see*\n\n- Daily: rolling seven-day reference, for steps and fast changes.\n- Monthly: against the training snapshot, for slow moves that matter.\n- When labels arrive: the model's own metrics by region, which inputs cannot replace.\n\n> **Three files leave the lab.** The dashboard (PSI per feature per day, with the threshold and the alerts), the alert rules, and the note: shifts found, alarms removed and by which rule, what is no longer visible. Lamya signs the note.","notes":"Inputs can move without hurting the model, and the model can fail with stable inputs. Session 4 turns the alerts into a retraining decision. The lab draws the dashboard as one image and writes the rules as a JSON file, so both run anywhere; in production the same series go to Prometheus and Grafana, or to a tool such as Evidently, and the rules become alert rules there.","minutes":null,"lo":["LO4"]},{"id":"checkpoint-2","n":21,"title":"One hot day","kind":"quiz","session":2,"hash":"b89d9f08","md":"#### [day3#checkpoint-2] One hot day\n\n*Checkpoint*\n\n**Question:** Temperature's PSI is 1.56 on day 8, then below 0.1 the next day. The monitor needs three days in a row above 0.2. What happens, and is it right?\n\n- A. An alert fires: 1.56 is far above 0.2\n- B. No alert: a one-day heat spike is weather, and it is logged\n- C. The monitor is broken and must be retuned\n- D. Retrain to include the hot day","notes":"Answer: B.","minutes":null,"lo":["LO4"]},{"id":"lab-3-2","n":22,"title":"Two shifts in a replayed month","kind":"lab","session":2,"hash":"70173c0d","md":"#### [day3#lab-3-2] Two shifts in a replayed month\n\nLab 3.2 · 25 min\n\nReplay a month of classifier inputs with two planted shifts, alert naively and count the false alarms, then tune the threshold and persistence until only the two shifts alert.\n\n[D3_2_drift_monitors.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_2_drift_monitors.ipynb)\n\n- [ ] Drift per feature per day (7 min)\n- [ ] Naive alerts and their false alarms (5 min)\n- [ ] Tune threshold and persistence (8 min)\n- [ ] The note: shifts found, alarms removed (5 min)\n- [ ] ✱ Stretch: Measure skew between the training snapshot and serving for one feature","notes":"Usual problems: bins cut on the current day instead of the reference; a zero share making the log infinite (clip it); a quiet day breaking a persistence run (it should neither extend nor break it). Ask early finishers to try persist=1 and threshold=0.1 to see which false alarm returns first.","minutes":null,"lo":[]},{"id":"s3","n":23,"title":"Online evaluation and review queues","kind":"section","session":3,"hash":"54957ddb","md":"#### [day3#s3] Online evaluation and review queues\n\n*Session 3*\n\n- Redact traces before storage and apply a retention rule\n- Grade a sample with a calibrated grader and correct the rate\n- Route failures and uncertain cases to a review queue","notes":"","minutes":null,"lo":["LO4"]},{"id":"offline-and-online","n":24,"title":"The gate checks 24 cases once; Nabd answers hundreds of questions a day","kind":"content","session":3,"hash":"708ac051","md":"#### [day3#offline-and-online] The gate checks 24 cases once; Nabd answers hundreds of questions a day\n\n*Online evaluation*\n\n1. **Record** traces, redacted\n2. **Sample** a fixed number, seeded\n3. **Grade** the calibrated grader\n4. **Correct** for the grader's errors\n5. **Review** failures and a few passes","notes":"Building and calibrating the grader is AE-303's subject; here it is an instrument with known sensitivity and specificity. The lab uses one week: 400 traces, 150 of them labelled by reviewers.","minutes":null,"lo":["LO4"]},{"id":"redact-before-storage","n":25,"title":"Redact before the trace is stored, not before it is displayed","kind":"content","session":3,"hash":"cf327c10","md":"#### [day3#redact-before-storage] Redact before the trace is stored, not before it is displayed\n\n*Lab 3.3 · step 1*\n\n```python\n# file: Lab 3.3\n\"The customer [name] called from [phone].\"\n\"Account [account], national ID [national-id].\"\n```\n\n- 87 of 400 questions held personal data.\n- Grading needs the answer and the context, not the customer.\n- Data never stored needs no access control and no deletion.","notes":"PDPL and the Data Management and Personal Data Protection Standards. Patterns cover Saudi mobile numbers, account numbers and ten-digit national IDs; names are the hard part, here caught by the phrase that introduces them. In production, test the redaction with a set of known examples and alert when a pattern appears after it.","minutes":null,"lo":["LO4"]},{"id":"raw-rate","n":26,"title":"The grader fails 29 of 100 sampled answers","kind":"content","session":3,"hash":"26da154f","md":"#### [day3#raw-rate] The grader fails 29 of 100 sampled answers\n\n*Lab 3.3 · steps 2 and 3, from the course's run*\n\n**0.29** raw failure rate, 95% interval 0.21 to 0.39\n\n- Some failures are good answers with a polite closing sentence the grader cannot find in the manual.\n- Some passes are bad: the right words with a wrong number.","notes":"Ask: would you report 29% to Saqer as Nabd's failure rate? The next slide corrects it.","minutes":null,"lo":["LO4"]},{"id":"rogan-gladen","n":27,"title":"Correct the raw rate with the grader's sensitivity and specificity","kind":"content","session":3,"hash":"5942a370","md":"#### [day3#rogan-gladen] Correct the raw rate with the grader's sensitivity and specificity\n\n*Lab 3.3 · step 4*\n\n```text\n# file: Rogan-Gladen\ntrue = (raw + sp - 1) / (se + sp - 1)\n     = (0.29 + 0.817 - 1) / (0.90 + 0.817 - 1)\n     = 0.15\n```\n\n| On 150 labelled traces | value |\n| --- | --- |\n| sensitivity: bad answers failed | 0.90 |\n| specificity: good answers passed | 0.82 |\n| corrected failure rate | 0.15 |\n| true rate in the sample | 0.17 |","notes":"The true rate is known only because the data is invented. The correction is an estimate with an error of several points from both the sample and the calibration set: report it with the raw rate and the sample sizes.","minutes":null,"lo":["LO4"]},{"id":"review-queue","n":28,"title":"Every failure and one pass in ten go to the reviewers' queue","kind":"content","session":3,"hash":"60e7528b","md":"#### [day3#review-queue] Every failure and one pass in ten go to the reviewers' queue\n\n*Routing*\n\n**32** traces for review from a sample of 100\n\n- Failures: confirm or overturn; each overturn is a calibration label.\n- Random passes: what the grader lets through.\n- Each review returns to the calibration set, so the grader's numbers stay current.","notes":"Saqer's reviewers have a fixed hour a day: size the sample so the queue fits the hour. The queue CSV holds the redacted question, never the original.","minutes":null,"lo":["LO4"]},{"id":"retention","n":29,"title":"Keep traces for a stated time, longer only while a reviewer needs them","kind":"content","session":3,"hash":"154b24be","md":"#### [day3#retention] Keep traces for a stated time, longer only while a reviewer needs them\n\n*Stretch · retention*\n\n- Wahaj's rule in the lab: redacted traces kept 3 days for debugging; those in the review queue held until reviewed.\n- On day 7: 221 traces deleted, 179 kept, 32 of them held for review.\n- PDPL Article 18: personal data is destroyed once it is no longer needed for its purpose.","notes":"The three-day period is the course's assumption, not a legal figure: the data protection officer (Nouf Al-Sadhan in the case) sets it with the system owner.","minutes":null,"lo":["LO4"]},{"id":"checkpoint-3","n":30,"title":"A grader's rate","kind":"quiz","session":3,"hash":"78a0fc1a","md":"#### [day3#checkpoint-3] A grader's rate\n\n*Checkpoint*\n\n**Question:** The grader fails 29% of a sample. On labelled traces it fails 90% of bad answers and passes 82% of good ones. What do you report?\n\n- A. 29% of Nabd's answers are wrong\n- B. About 32%: the grader misses a tenth of the bad answers\n- C. About 15% after correction, with the raw rate and the sample sizes\n- D. Nothing until every trace is reviewed by hand","notes":"Answer: C.","minutes":null,"lo":["LO4"]},{"id":"lab-3-3","n":31,"title":"Online evaluation and a review queue","kind":"lab","session":3,"hash":"004eff94","md":"#### [day3#lab-3-3] Online evaluation and a review queue\n\nLab 3.3 · 25 min\n\nRedact a week of Nabd traces, sample them, score them with the provided calibrated grader, correct the failure rate for the grader's error and route failures to review.\n\n[D3_3_online_eval.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_3_online_eval.ipynb)\n\n- [ ] Redact before storage (6 min)\n- [ ] Sample the week (4 min)\n- [ ] Grade with the calibrated grader (6 min)\n- [ ] Route to review and correct the rate (9 min)\n- [ ] ✱ Stretch: A retention rule that deletes traces past their limit","notes":"Usual problems: a regular expression for phone numbers that also eats feeder or account digits; sampling from the calibration traces; computing sensitivity over all traces instead of the bad ones. The answers in the traces are invented and the manuals are not engineering guidance.","minutes":null,"lo":[]},{"id":"s4","n":32,"title":"Retraining and refresh policies","kind":"section","session":4,"hash":"90a4b8ea","md":"#### [day3#s4] Retraining and refresh policies\n\n*Session 4*\n\n- Write a trigger from drift or a schedule that waits for labels\n- Estimate the cost of a retraining run\n- Require human approval and log the decision","notes":"","minutes":null,"lo":["LO2","LO6"]},{"id":"retrain-script","n":33,"title":"A script retrains on a fixed day each month, whatever the data says","kind":"content","session":4,"hash":"865adb55","md":"#### [day3#retrain-script] A script retrains on a fixed day each month, whatever the data says\n\n*What Wahaj does today*\n\n- It trained challenger A on August's first cut of labels, before the Al-Jabal inspections.\n- It would retrain on the load skew of day 12 if it ran then.\n- It promotes without anyone reading the evidence.\n\n- **A policy says.** when to consider retraining, whether the data is ready, what it costs, and who approves.","notes":"Recap from Day 1: the registry lineage showed the author of challenger A as \"scheduled retrain script\".","minutes":null,"lo":["LO2"]},{"id":"trigger-and-labels","n":34,"title":"A trigger proposes; complete labels and the triage decide","kind":"content","session":4,"hash":"a8fee928","md":"#### [day3#trigger-and-labels] A trigger proposes; complete labels and the triage decide\n\n*Lab 3.4 · step 1, from the course's run*\n\n| Date | Signal | Decision | Why |\n| --- | --- | --- | --- |\n| 20 Sep | drift: dust | wait | August labels complete on 2 October |\n| 14 Oct | drift: load | no | skew: fix the data with its owner |\n| 3 Oct | schedule | retrain | August labels complete |\n| 3 Nov | schedule | retrain | September labels complete |","notes":"The label calendar is part of the policy: 30 days for most feeders, about a month more for Al-Jabal. Ask: which signal would the old script have acted on wrongly? All four.","minutes":null,"lo":["LO2"]},{"id":"retrain-cost","n":35,"title":"One retraining run costs 14 node-hours: about 6.3 riyals, of 25.8 left in the budget","kind":"content","session":4,"hash":"b78be223","md":"#### [day3#retrain-cost] One retraining run costs 14 node-hours: about 6.3 riyals, of 25.8 left in the budget\n\n*Lab 3.4 · step 2*\n\n**6.31 SAR** extra node-hours on 3 October at the assumed price\n\n- Compute is the small part here.\n- The larger costs: the reviewer's hour, a worse model in one region, a rollback.\n- For a fine-tuned language model the compute line can dominate: estimate before running.","notes":"The figure comes from Lab 2.4's October log: 3 October used about 14 node-hours more than a normal day. Prices are course assumptions. Day 2's forecast alert fired on the classifier because of this run: the policy now declares it as a planned job.","minutes":null,"lo":["LO6"]},{"id":"human-approval","n":36,"title":"The pipeline trains and gates on its own; a person approves the promotion","kind":"content","session":4,"hash":"7bf7532b","md":"#### [day3#human-approval] The pipeline trains and gates on its own; a person approves the promotion\n\n*Lab 3.4 · step 3*\n\n- retrain pipeline: refused: the requester cannot approve its own request\n- Saqer Al-Dossary: refused: not an approver of fault-risk\n- Lamya Al-Muqbil: approved, with the batch, the trigger, the cost and the gate result","notes":"The approval is recorded as tags on the registry version, so the evidence travels with the model. Same principle as Day 2's production approval: the author does not approve.","minutes":null,"lo":["LO2"]},{"id":"end-to-end","n":37,"title":"August promotes v4; September stops at validation, before any training","kind":"content","session":4,"hash":"46ce17e4","md":"#### [day3#end-to-end] August promotes v4; September stops at validation, before any training\n\n*Lab 3.4 · step 4, from the course's run*\n\n- 2026-08: load · validate · train · gate · approve · promote: v3 → v4\n- 2026-09: load · validate: 36 duplicates, 807 loads out of range, 14 bad region codes\n\n| AUC | all | Al-Sahil | Al-Jabal |\n| --- | --- | --- | --- |\n| champion v3 | 0.837 | 0.738 | 0.877 |\n| challenger v4 | 0.866 | 0.902 | 0.863 |","notes":"Quick-mode numbers (fewer trees); the full run gives slightly different values and the same decisions. Al-Jabal is 0.014 lower, inside the 0.03 tolerance. The new version's tags: months, data snapshot, code hash, trigger, cost, approved_by, promoted_from.","minutes":null,"lo":["LO2"]},{"id":"index-refresh-policy","n":38,"title":"An index refresh needs a trigger, a ready evaluation, a cost and an approver too","kind":"content","session":4,"hash":"763d9a66","md":"#### [day3#index-refresh-policy] An index refresh needs a trigger, a ready evaluation, a cost and an approver too\n\n*Stretch · the same policy for Nabd's index*\n\n- Trigger: the manuals' fingerprint changed (v3 to v4).\n- Ready: every changed manual (MM-02, MM-11) has a case in the evaluation set.\n- Then the gate of Lab 2.2, and Saqer approves for field operations.","notes":"If a changed manual had no case, the policy says write cases first: the gate cannot detect a regression it has no case for.","minutes":null,"lo":["LO2"]},{"id":"checkpoint-4","n":39,"title":"A drift alert on the 20th","kind":"quiz","session":4,"hash":"bc62f8f8","md":"#### [day3#checkpoint-4] A drift alert on the 20th\n\n*Checkpoint*\n\n**Question:** On 20 September a drift alert fires on dust for August's feeders. August's labels are complete on 2 October; a first cut exists. What does the policy do?\n\n- A. Retrain now on the first cut\n- B. Ignore the alert: the schedule will retrain anyway\n- C. Lower the champion's threshold until labels arrive\n- D. Wait for the complete labels, then retrain and gate","notes":"Answer: D.","minutes":null,"lo":["LO2"]},{"id":"lab-3-4","n":40,"title":"A retraining trigger with a cost and an approval","kind":"lab","session":4,"hash":"e73c3bf1","md":"#### [day3#lab-3-4] A retraining trigger with a cost and an approval\n\nLab 3.4 · 25 min\n\nWrite the retraining trigger with a cost estimate and a human approval, and test it end to end: the drifted batch promotes a new champion, the corrupt batch stops, both with registry lineage.\n\n[D3_4_retraining_policy.ipynb](https://sdaiaacademy.github.io/ae-305/labs/D3_4_retraining_policy.ipynb)\n\n- [ ] Drift or schedule, and labels ready (6 min)\n- [ ] The cost estimate (5 min)\n- [ ] Human approval (5 min)\n- [ ] Test on the drifted and the corrupt batch (9 min)\n- [ ] ✱ Stretch: Treat the manuals index refresh as a release under the same policy","notes":"The registry takes about a minute to build in quick mode: start the first cell while you introduce the lab. Usual problems: choosing the batch from the signal's month instead of the newest month with complete labels; letting the requester approve; reading lineage from the run log instead of the registry.","minutes":null,"lo":[]},{"id":"day-3-recap","n":41,"title":"Traces find the slow step, tuned monitors find real shifts, a calibrated sample measures quality, a policy decides retraining","kind":"content","session":4,"hash":"1cac6493","md":"#### [day3#day-3-recap] Traces find the slow step, tuned monitors find real shifts, a calibrated sample measures quality, a policy decides retraining\n\n*Day 3 recap*\n\n- **Traces.** 338 → 82 ms\n- **Monitors.** 51 → 2 alerts\n- **Online evaluation.** 0.29 raw, 0.15 corrected\n- **Retraining.** labels, cost, approval","notes":"Observability is 20 of the rubric's 100. The capstone runs this monitor and this pipeline on a new week.","minutes":null,"lo":[]},{"id":"tomorrow-agents","n":42,"title":"Operate agents: one versioned bundle, durable state, a replayed incident and a kill switch","kind":"content","session":4,"hash":"ab4d5a90","md":"#### [day3#tomorrow-agents] Operate agents: one versioned bundle, durable state, a replayed incident and a kill switch\n\n*Tomorrow · Day 4*\n\nTomorrow Mubadir closes a ticket on stale data, creates duplicates after a crash and loops on a pending outage. You replay, fix and stop it.","notes":"Every Day 4 lab starts from its own reference state, so a participant who missed today can follow.","minutes":null,"lo":[]}],"activities":[{"id":"review-day-2-q1","slide":"review-day-2","type":"single","prompt":"A new snapshot passed the offline gate and its shadow run, then the canary at 25% rolled back. What made the difference?","options":[{"key":"A","text":"The offline gate was run again with more cases"},{"key":"B","text":"Real traffic at 25% included the Arabic-heavy shift the earlier evidence never saw"},{"key":"C","text":"The shadow run had failed and was ignored"},{"key":"D","text":"A reviewer refused the release at 25%"}],"correct":[1],"explanation":"Each instrument only tests the traffic it sees. The canary's analysis saw 43% Arabic requests and its latency trigger fired.","misconceptions":["The gate's cases did not change between the two runs","","The shadow looked better than stable; it did not trigger anything","A canary has no reviewer in the loop; the trigger acted on its own"],"lo":["LO3"]},{"id":"checkpoint-1-q1","slide":"checkpoint-1","type":"single","prompt":"A trace of a slow Nabd request shows the retrieval span at 260 ms and each model span at 80 ms. The team proposes a faster model. What do you say?","options":[{"key":"A","text":"Agree: model calls are usually the slow part"},{"key":"B","text":"Collect a month of traces before deciding"},{"key":"C","text":"Add more replicas of Nabd"},{"key":"D","text":"Fix retrieval first, then measure again with the same spans"}],"correct":[3],"explanation":"The trace shows retrieval as the largest step; a faster model would cut a smaller part and cost a release.","misconceptions":["Optimises the step that is not the bottleneck","More data does not change what the spans already show","Adds capacity without removing the repeated work",""],"lo":["LO4"]},{"id":"checkpoint-2-q1","slide":"checkpoint-2","type":"single","prompt":"Temperature's PSI is 1.56 on day 8, then below 0.1 the next day. The monitor needs three days in a row above 0.2. What happens, and is it right?","options":[{"key":"A","text":"An alert fires: 1.56 is far above 0.2"},{"key":"B","text":"No alert: a one-day heat spike is weather, and it is logged"},{"key":"C","text":"The monitor is broken and must be retuned"},{"key":"D","text":"Retrain to include the hot day"}],"correct":[1],"explanation":"Persistence is there for exactly this: a single extreme day is not a shift.","misconceptions":["Ignores the persistence rule the monitor was given","","Treats a monitor's quiet as a fault in the monitor","Changes the model for a single day of weather"],"lo":["LO4"]},{"id":"checkpoint-3-q1","slide":"checkpoint-3","type":"single","prompt":"The grader fails 29% of a sample. On labelled traces it fails 90% of bad answers and passes 82% of good ones. What do you report?","options":[{"key":"A","text":"29% of Nabd's answers are wrong"},{"key":"B","text":"About 32%: the grader misses a tenth of the bad answers"},{"key":"C","text":"About 15% after correction, with the raw rate and the sample sizes"},{"key":"D","text":"Nothing until every trace is reviewed by hand"}],"correct":[2],"explanation":"False failures inflate the raw rate; Rogan-Gladen removes both kinds of error, and the sizes say how far to trust it.","misconceptions":["Reports the instrument's reading as the quantity it measures","Divides by sensitivity only and ignores false failures","","Discards a usable instrument because it is imperfect"],"lo":["LO4"]},{"id":"checkpoint-4-q1","slide":"checkpoint-4","type":"single","prompt":"On 20 September a drift alert fires on dust for August's feeders. August's labels are complete on 2 October; a first cut exists. What does the policy do?","options":[{"key":"A","text":"Retrain now on the first cut"},{"key":"B","text":"Ignore the alert: the schedule will retrain anyway"},{"key":"C","text":"Lower the champion's threshold until labels arrive"},{"key":"D","text":"Wait for the complete labels, then retrain and gate"}],"correct":[3],"explanation":"The missing labels are the high-risk mountain feeders; a model trained without them learns the gap.","misconceptions":["Repeats challenger A: learns that uninspected feeders never fault","Discards a real signal instead of scheduling it","Changes the model without new evidence",""],"lo":["LO2"]}],"ai":{"context":{"course":"../context/course.md","courseJs":"../context/course.js","day":"day3.md","llms":"../llms.txt"},"tasks":[],"tools":[]},"bridge":{"allowedOrigins":[]},"features":{},"strings":{}}</script>
+<script src="../_engine/academy.js"></script>
+</body>
+</html>

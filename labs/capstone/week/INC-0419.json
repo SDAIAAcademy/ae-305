@@ -1,0 +1,128 @@
+{
+ "synthetic": true,
+ "incident": "INC-0419",
+ "summary": "Two crews were paged for one customer report on feeder F-4293. The ticket service timed out after committing the first ticket; the harness retried and opened a second.",
+ "tickets_created": [
+  "OT-31001",
+  "OT-31002"
+ ],
+ "session_id": "S-0419",
+ "status": "done",
+ "final": "I opened ticket OT-31002 for your feeder F-4293 and sent it to the duty crew.",
+ "events": [
+  {
+   "type": "report",
+   "text": "Salam, no power since the morning prayer. Account ACC-40000411."
+  },
+  {
+   "type": "model",
+   "step": 1,
+   "content": "{\"tool\": \"find_customer\", \"args\": {\"account\": \"ACC-40000411\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 131,
+    "output_tokens": 15
+   }
+  },
+  {
+   "type": "tool",
+   "step": 1,
+   "tool": "find_customer",
+   "args": {
+    "account": "ACC-40000411"
+   },
+   "result": {
+    "account": "ACC-40000411",
+    "feeder_id": "F-4293",
+    "region": "NAK",
+    "life_support": false
+   }
+  },
+  {
+   "type": "model",
+   "step": 2,
+   "content": "{\"tool\": \"get_outage\", \"args\": {\"feeder_id\": \"F-4293\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 181,
+    "output_tokens": 13
+   }
+  },
+  {
+   "type": "tool",
+   "step": 2,
+   "tool": "get_outage",
+   "args": {
+    "feeder_id": "F-4293"
+   },
+   "result": {
+    "feeder_id": "F-4293",
+    "status": "none",
+    "ticket": null,
+    "age_minutes": 0
+   }
+  },
+  {
+   "type": "model",
+   "step": 3,
+   "content": "{\"tool\": \"create_ticket\", \"args\": {\"account\": \"ACC-40000411\", \"feeder_id\": \"F-4293\", \"summary\": \"customer reports no power\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 224,
+    "output_tokens": 31
+   }
+  },
+  {
+   "type": "retry",
+   "step": 3,
+   "tool": "create_ticket",
+   "attempt": 1,
+   "error": "ticket service did not answer within 5 s"
+  },
+  {
+   "type": "tool",
+   "step": 3,
+   "tool": "create_ticket",
+   "args": {
+    "account": "ACC-40000411",
+    "feeder_id": "F-4293",
+    "summary": "customer reports no power"
+   },
+   "result": {
+    "ticket_id": "OT-31002"
+   }
+  },
+  {
+   "type": "model",
+   "step": 4,
+   "content": "{\"tool\": \"notify_crew\", \"args\": {\"ticket_id\": \"OT-31002\"}}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 273,
+    "output_tokens": 14
+   }
+  },
+  {
+   "type": "tool",
+   "step": 4,
+   "tool": "notify_crew",
+   "args": {
+    "ticket_id": "OT-31002"
+   },
+   "result": {
+    "ticket_id": "OT-31002",
+    "notified": true
+   }
+  },
+  {
+   "type": "model",
+   "step": 5,
+   "content": "{\"final\": \"I opened ticket OT-31002 for your feeder F-4293 and sent it to the duty crew.\"}",
+   "model": "scripted/steady",
+   "usage": {
+    "input_tokens": 309,
+    "output_tokens": 22
+   }
+  }
+ ]
+}
