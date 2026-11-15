@@ -1,0 +1,26 @@
+# The latency trigger of Lab 2.3 as an Argo Rollouts AnalysisTemplate. A failed analysis aborts the rollout and
+# traffic returns to the stable version. The query assumes Nabd exports a latency histogram to Prometheus.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: nabd-latency
+spec:
+  metrics:
+    - name: p95-latency
+      interval: 5m
+      failureLimit: 0
+      successCondition: result[0] <= 2.5
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring:9090
+          query: |
+            histogram_quantile(0.95, sum(rate(nabd_answer_seconds_bucket{track="canary"}[5m])) by (le))
+    - name: graded-ok
+      interval: 5m
+      failureLimit: 0
+      successCondition: result[0] >= 0.85
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring:9090
+          query: |
+            sum(rate(nabd_grade_ok_total{track="canary"}[15m])) / sum(rate(nabd_graded_total{track="canary"}[15m]))

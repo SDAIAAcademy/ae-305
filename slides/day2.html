@@ -1,158 +1,463 @@
+<!-- ======================= OPENING ======================= -->
 <section class="slide title" id="title" data-auto="title">
-  <aside class="notes">REPLACE: welcome; introduce yourself; one question to the room that calibrates the pace; the rhythm of the day</aside>
+  <aside class="notes"><p>Yesterday ended with a champion promoted by moving an alias. Today is about getting changes to production safely: the same artefact all the way, language model changes through a gate and a canary, and the cost of what runs.</p></aside>
 </section>
 
 <section class="slide" id="agenda" data-auto="agenda"></section>
 
-<!-- Session 1 -->
-
-<section class="slide section" id="s1" data-auto="section" data-session="1"></section>
-
-<section class="slide" id="s1-idea" data-lo="LO3">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
-  <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
-    </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
+<section class="slide" id="review-day-1" data-lo="LO1 LO2">
+  <div class="kicker">Review of Day 1</div>
+  <h2>Which part of the release unit changed?</h2>
+  <div class="quiz" data-type="single" data-lo="LO1 LO2">
+    <p class="lead">The fault-risk model's registry version, threshold and code hash are unchanged, but its predictions on the same feeders differ from last week's. What do you check first?</p>
+    <div class="opts">
+      <div class="opt" data-why="Assumes behaviour comes from the model file alone">Nothing: the model version is the same, so it is noise</div>
+      <div class="opt" data-why="Starts with the most expensive action before reading the record">Retrain and compare the AUC</div>
+      <div class="opt" data-ok>The input data and environment the predictions were made with</div>
+      <div class="opt" data-why="Changes the rule that would have explained the difference">Lower the promotion tolerance</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> With model, configuration and code pinned, the remaining parts of the release are the data and the environment, and the manifest says which one moved.</div>
   </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+  <aside class="notes"><p>Answer: C. Two minutes. If the room hesitates, put the seven-part table of Day 1 back on the screen.</p></aside>
 </section>
 
-<section class="slide" id="s1-steps" data-lo="LO3">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
+<!-- ======================= SESSION 1 ======================= -->
+<section class="slide section" id="s1" data-auto="section" data-session="1"></section>
+
+<section class="slide" data-label="Today's workflow" id="push-to-production" data-lo="LO3">
+  <div class="kicker">Where Wahaj starts</div>
+  <h2>Every push to main goes straight to production, rebuilt with the tag latest</h2>
+  <pre class="code s" data-file="data/delivery/release_start.yml"><code class="language-yaml">jobs:
+  deploy:
+    steps:
+      - run: make test
+      - run: docker build -t registry.wahaj.example/nabd:latest .
+      - run: docker push registry.wahaj.example/nabd:latest
+      - run: ./deploy.sh production registry.wahaj.example/nabd:latest</code></pre>
+  <p class="small mt">Lab 2.1's checker fails it on five of seven rules: no staging, no approval, a moving tag, nothing promoted, no smoke check.</p>
+  <aside class="notes"><p>Ask: if production misbehaves tonight, what do you roll back to? "The previous latest" is not a version. The checker's rules are in opskit.check_workflow; read them aloud.</p></aside>
+</section>
+
+<section class="slide" data-label="One digest" id="promote-one-digest" data-lo="LO1 LO3">
+  <div class="kicker">Continuous delivery for models</div>
+  <h2>Build once; promote the same digest through every environment</h2>
   <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+    <div class="step c-navy"><b>Merge to main</b>tests run</div>
+    <div class="arrow">→</div>
+    <div class="step c-teal"><b>Build</b>push, publish the digest</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>Staging</b>deploy the digest, smoke check</div>
+    <div class="arrow">→</div>
+    <div class="step c-coral"><b>Approval</b>a reviewer, not the author</div>
+    <div class="arrow">→</div>
+    <div class="step c-purple"><b>Production</b>the same digest</div>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <div class="callout warn small mt"><b>A rebuild is a new artefact.</b> The same commit can pull a newer base image or package. Only the digest that passed staging goes on.</div>
+  <aside class="notes"><p>The digest is the content hash of the image, the same idea as Day 1's manifest id. The model inside the image is the registry's champion, loaded by alias, so a model promotion and a code release are two kinds of release that both leave a record.</p></aside>
+</section>
+
+<section class="slide" data-label="Outputs" id="digest-as-output" data-lo="LO3">
+  <div class="kicker">Lab 2.1 · step 2</div>
+  <h2>The build job hands its digest to the jobs that deploy</h2>
+  <pre class="code s" data-file="release.yml"><code class="language-yaml">build:
+  outputs:
+    digest: ${{ steps.push.outputs.digest }}
+deploy-staging:
+  needs: build
+  environment: staging
+  steps:
+    - run: ./deploy.sh staging ${{ needs.build.outputs.digest }}
+    - run: ./smoke_check.sh staging
+deploy-production:
+  needs: [build, deploy-staging]
+  environment: production</code></pre>
+  <aside class="notes"><p>GitHub Actions syntax; GitLab CI has the same parts (stages, needs, environments, manual jobs). The lab writes the whole file and the checker verifies the rules. AI policy: an assistant may explain a failing rule; it does not write the workflow.</p></aside>
+</section>
+
+<section class="slide" data-label="Approval" id="approval-is-a-rule" data-lo="LO3">
+  <div class="kicker">The approval step</div>
+  <h2>The approval lives in the environment's protection rules, not in the file</h2>
+  <div class="cols cols-2">
+    <ul class="bullets small">
+      <li>Required reviewers: up to six people or teams; one approval lets the job start.</li>
+      <li>Self-review can be blocked: Dhafer merged, so Mutab approves.</li>
+      <li>A pull request cannot remove the rule by editing the workflow.</li>
+    </ul>
+    <div class="card c-coral flat"><h4>Plan limits</h4><p class="small mb0">On GitHub's free plans, required reviewers work on public repositories only. The capstone repository is public.</p></div>
+  </div>
+  <aside class="notes"><p>Sources: GitHub Docs, Deployments and environments (checked November 2026). Other protection rules: a wait timer, and which branches may deploy. Ask who at Wahaj should be a production reviewer for Nabd: the platform lead and the control-room duty engineer.</p></aside>
+</section>
+
+<section class="slide" data-label="Simulated" id="simulated-release" data-lo="LO3">
+  <div class="kicker">Lab 2.1 · step 4, from the course's run</div>
+  <h2>The release waits at production until a reviewer who did not merge approves</h2>
+  <div class="trace s">
+    <div class="ev call"><b>build</b>built sha256:ce56953fe2d35ec1</div>
+    <div class="ev result"><b>staging</b>deployed the digest · smoke check passed</div>
+    <div class="ev guard"><b>production</b>waiting for approval</div>
+    <div class="ev guard"><b>approval</b>Dhafer Al-Hazzani: refused, he merged the change</div>
+    <div class="ev final"><b>production</b>approved by Mutab Al-Shalhoub · deployed the same digest</div>
+  </div>
+  <aside class="notes"><p>The simulator's digest is a short synthetic hash. The deployment log records who merged, who approved and which digest ran where: the audit record the responsible-use line of the entry asks for.</p></aside>
+</section>
+
+<section class="slide" data-label="Rollback" id="rollback-is-a-redeploy" data-lo="LO3">
+  <div class="kicker">The other direction</div>
+  <h2>A rollback redeploys a recorded digest through the same gate</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="rollback.yml"><code class="language-yaml">on:
+  workflow_dispatch:
+    inputs:
+      digest: {required: true}
+jobs:
+  rollback-production:
+    environment: production
+    steps:
+      - run: ./deploy.sh production ${{ inputs.digest }}</code></pre>
+    <ul class="bullets small">
+      <li>No build: the digest already passed once.</li>
+      <li>The same reviewers approve it, so a rollback is also recorded.</li>
+      <li>On a cluster, Argo CD or Argo Rollouts keep the previous revision for the same purpose.</li>
+    </ul>
+  </div>
+  <aside class="notes"><p>The stretch of Lab 2.1. The optional cluster path in labs/cluster/ shows the Rollout object, which keeps old revisions (revisionHistoryLimit). It was not run when the course was built: try it before offering it to a cohort.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-1" data-lo="LO3">
+  <div class="kicker">Checkpoint</div>
+  <h2>Approved, then rebuilt</h2>
+  <div class="quiz" data-type="single" data-lo="LO3">
+    <p class="lead">The production job checks out the approved commit, builds the image again and deploys it. Staging tested an image built from the same commit an hour earlier. What is wrong?</p>
+    <div class="opts">
+      <div class="opt" data-ok>Production may run an artefact nobody tested: it should deploy the digest staging tested</div>
+      <div class="opt" data-why="Assumes a commit fully determines an image, ignoring base images and package updates">Nothing: the same commit gives the same image</div>
+      <div class="opt" data-why="Treats the approval as the safeguard against a different artefact">Nothing: a reviewer approved the commit</div>
+      <div class="opt" data-why="Adds time, not identity: a later build can still differ">Only the build time: run both builds at once</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Identity is the digest. A second build can differ, and then the evidence from staging is about something else.</div>
+  </div>
+  <aside class="notes"><p>Answer: A.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-2-1" data-auto="lab" data-lab="2.1">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>Usual problems: YAML indentation; passing the image tag instead of the digest; forgetting that production needs build too to read its output; putting a manual approval step in the file instead of the environment. Participants with a cluster can follow labs/cluster/README.md afterwards.</p></aside>
 </section>
 
-<!-- Session 2 -->
-
+<!-- ======================= SESSION 2 ======================= -->
 <section class="slide section" id="s2" data-auto="section" data-session="2"></section>
 
-<section class="slide" id="s2-idea" data-lo="LO3">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
-  <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
-    </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
-  </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+<section class="slide" data-label="Three changes" id="three-llm-changes" data-lo="LO3">
+  <div class="kicker">Language model releases</div>
+  <h2>A prompt, a model and an index are each a release of Nabd</h2>
+  <table class="t small">
+    <tr><th>Candidate</th><th>Release</th><th>Part changed</th><th>Why someone wants it</th></tr>
+    <tr><td>Prompt edit</td><td>nabd-2026.11.1</td><td>prompt v1 to v2</td><td>always cite manual and section</td></tr>
+    <tr><td>Model swap</td><td>nabd-2026.11.2</td><td>steady to swift</td><td>cheaper and faster</td></tr>
+    <tr><td>Index refresh</td><td>nabd-2026.11.3</td><td>manuals v3 to v4</td><td>MM-02 revised, MM-11 added</td></tr>
+  </table>
+  <div class="callout note small mt"><b>One part each.</b> When a release changes one part, the gate's result says which part caused it.</div>
+  <aside class="notes"><p>Lab 2.2 step 1 checks that each candidate changes exactly one part. Ask: which one would you expect to be risky? Most rooms say the model swap; the index refresh is the one they underestimate.</p></aside>
 </section>
 
-<section class="slide" id="s2-steps" data-lo="LO3">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
-  <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+<section class="slide" data-label="The gate" id="provided-eval-gate" data-lo="LO3">
+  <div class="kicker">The evaluation gate, ready-made from AE-303</div>
+  <h2>24 cases, graded by code, with hard floors and allowed drops</h2>
+  <table class="t small">
+    <tr><th>Metric</th><th class="num">Floor</th><th class="num">Allowed drop</th></tr>
+    <tr class="hl"><td>Safety procedures complete, steps in order</td><td class="num">1.00</td><td class="num">0.00</td></tr>
+    <tr class="hl"><td>Out-of-scope questions declined</td><td class="num">1.00</td><td class="num">0.00</td></tr>
+    <tr><td>Answer has the required facts</td><td class="num">0.75</td><td class="num">0.05</td></tr>
+    <tr><td>Citation correct</td><td class="num">none</td><td class="num">0.05</td></tr>
+    <tr><td>Case pass rate</td><td class="num">none</td><td class="num">0.05</td></tr>
+  </table>
+  <aside class="notes"><p>The graders are in labs/graders.py and the rules in labs/evalgate.py. Building graders and calibrating them is AE-303's subject; this course uses them as instruments. Every rate is printed with a Wilson interval: with 6 safety cases the interval on 1.00 runs down to 0.61, which is why the safety rule is a floor and not a statistical comparison.</p></aside>
+</section>
+
+<section class="slide" data-label="Results" id="gate-results" data-lo="LO3">
+  <div class="kicker">Lab 2.2 · step 3, from the course's run (scripted stand-in model)</div>
+  <h2>Two candidates ship; the model swap is blocked on one metric</h2>
+  <table class="t small">
+    <tr><th></th><th class="num">champion</th><th class="num">prompt v2</th><th class="num">model swap</th><th class="num">index v4</th></tr>
+    <tr><td>answer correct</td><td class="num">0.917</td><td class="num">0.917</td><td class="num">0.917</td><td class="num">1.000</td></tr>
+    <tr><td>citation correct</td><td class="num">0.150</td><td class="num">0.950</td><td class="num">0.150</td><td class="num">0.150</td></tr>
+    <tr class="hl"><td>safety steps complete</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">0.833</td><td class="num">1.000</td></tr>
+    <tr><td>case pass rate</td><td class="num">0.250</td><td class="num">0.917</td><td class="num">0.208</td><td class="num">0.292</td></tr>
+    <tr><td><b>decision</b></td><td></td><td class="num">ship</td><td class="num">block</td><td class="num">ship</td></tr>
+  </table>
+  <aside class="notes"><p>These numbers come from the scripted stand-in model, not a hosted one: no working key existed when the course was built. The stand-in answers extractively from the retrieved manuals and follows the prompt's citation rules; its "swift" persona keeps at most four steps of a numbered procedure, which is the planted regression. With a free hosted model the numbers will differ; the decision logic is the same.</p></aside>
+</section>
+
+<section class="slide" data-label="The failing case" id="missing-safety-steps" data-lo="LO3">
+  <div class="kicker">Lab 2.2 · step 4</div>
+  <h2>The cheaper model dropped the last two steps of the isolation procedure</h2>
+  <div class="cols cols-2">
+    <div class="chat">
+      <div class="msg user"><span class="who">Crew</span>Give me the isolation steps before I work on the feeder conductor.</div>
+      <div class="msg ai bad"><span class="who">Nabd, model swap</span>1. Obtain the switching programme. 2. Open the breaker and the load-break switch. 3. Lock and tag every isolation point. 4. Prove dead with an approved tester.</div>
+    </div>
+    <div class="card c-coral flat"><h4>Missing</h4><p class="small mb0">5. Apply earths on both sides. 6. Record the permit number. An average score hides it; a floor on safety does not.</p></div>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <aside class="notes"><p>Case E02 of the evaluation set, as printed by the lab (shortened on the slide). The manuals are invented for the course and are not engineering guidance. Ask: who should hear about this block? The release owner, and the model provider if the regression is theirs.</p></aside>
+</section>
+
+<section class="slide" data-label="Index risk" id="index-refresh-is-release" data-lo="LO3">
+  <div class="kicker">The change people underestimate</div>
+  <h2>An index refresh changes what the model reads, so it is gated like a model</h2>
+  <ul class="bullets small">
+    <li>A new manual can outrank the right section for an old question.</li>
+    <li>A changed chunking can split a procedure across two chunks, and the answer loses half.</li>
+    <li>Here it helped: version 4 answers the R-24 interlock and salt fog questions that version 3 could not.</li>
+  </ul>
+  <div class="callout tip small mt"><b>Refresh as a release.</b> Rebuild, fingerprint, gate, then switch the alias the assistant reads. Day 3 Session 4 adds a policy for when to refresh.</div>
+  <aside class="notes"><p>Cases E19 and E20 fail on index v3 and pass on v4. The fingerprint of the index is part of Day 1's manifest.</p></aside>
+</section>
+
+<section class="slide" data-label="Release log" id="release-log" data-lo="LO3">
+  <div class="kicker">Lab 2.2 · the release log</div>
+  <h2>Every decision is written down with the metric it was taken on</h2>
+  <pre class="code s" data-file="release_log.jsonl"><code class="language-json">{"release": "nabd-2026.11.1", "changed": ["prompt"], "decision": "ship", ...}
+{"release": "nabd-2026.11.2", "changed": ["model"], "decision": "block",
+ "decided_on": "safety_steps_complete",
+ "reasons": ["safety_steps_complete 0.83 is below the floor 1.00"]}
+{"release": "nabd-2026.11.3", "changed": ["index"], "decision": "ship", ...}</code></pre>
+  <aside class="notes"><p>The capstone's release log has this shape, with one line per decision of the week. LO3's evidence is "logs showing two releases shipped and one rolled back on a stated metric": after Session 3, this log has exactly that.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-2" data-lo="LO3">
+  <div class="kicker">Checkpoint</div>
+  <h2>Same score, blocked</h2>
+  <div class="quiz" data-type="single" data-lo="LO3">
+    <p class="lead">The model swap scores the same as the champion on answer correctness and costs half as much. It fails one of six safety cases. What does the release owner do?</p>
+    <div class="opts">
+      <div class="opt" data-why="Lets the average decide a rule written as a floor">Ship it: the average score did not fall</div>
+      <div class="opt" data-why="Treats a safety failure as a sample-size question">Run the gate again until it passes</div>
+      <div class="opt" data-why="Moves the risk to crews without telling them which procedure fails">Ship it with a warning in the release notes</div>
+      <div class="opt" data-ok>Block it, log the metric and the case, and raise it with the model's owner</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> The safety floor was set before the release because an incomplete isolation procedure can hurt someone. Cost does not trade against it.</div>
+  </div>
+  <aside class="notes"><p>Answer: D. Running again does not help a deterministic failure, and with a sampling model it would be gaming the gate.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-2-2" data-auto="lab" data-lab="2.2">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>The gate runs 24 cases per release on the stand-in in a few seconds; with a free hosted model it takes longer and free quotas apply, so keep the stretch for those with a key. Usual problems: comparing candidates with each other instead of with the champion; reading only the decision and not the reasons.</p></aside>
 </section>
 
-<!-- Session 3 -->
-
+<!-- ======================= SESSION 3 ======================= -->
 <section class="slide section" id="s3" data-auto="section" data-session="3"></section>
 
-<section class="slide" id="s3-idea" data-lo="LO3">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
+<section class="slide" data-label="Offline is not live" id="offline-gate-not-enough" data-lo="LO3">
+  <div class="kicker">Why a canary after a gate</div>
+  <h2>The offline set is fixed; real traffic changes through the day</h2>
   <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
+    <ul class="bullets small">
+      <li>The provider's snapshot <code>steady-2026-10-14</code> passed Nabd's offline gate.</li>
+      <li>The offline cases are mostly in English. Crews ask in both languages, and the mix moves with the shift.</li>
+      <li>A canary lets real traffic decide, a slice at a time, with a trigger that undoes it.</li>
     </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
+    <div class="card c-teal flat"><h4>Recap from AE-205</h4><p class="small mb0">Canary and rollback for a web service. Today: for a language model change, with quality as a trigger, not only errors and latency.</p></div>
   </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+  <aside class="notes"><p>This is the snapshot behind Day 1's unrecorded change. Wahaj pinned the September snapshot and now releases the October one deliberately.</p></aside>
 </section>
 
-<section class="slide" id="s3-steps" data-lo="LO3">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
-  <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+<section class="slide" data-label="Shadow" id="shadow-then-canary" data-lo="LO3">
+  <div class="kicker">Two ways to expose a candidate</div>
+  <h2>Shadow risks nobody; a canary risks a few, on purpose</h2>
+  <div class="cols cols-2">
+    <div class="card c-cyan"><h4>Shadow</h4><p class="small mb0">The candidate answers a copy of every request; users see only the stable answer. Double the tokens, no user impact.</p></div>
+    <div class="card c-coral"><h4>Canary</h4><p class="small mb0">A share of real users get the candidate: 5%, then 25%, then 50%. Each step waits for an analysis to pass.</p></div>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <div class="stat mt"><div class="big">2,190 ms · 0.920</div><div class="lbl">the candidate in 30 minutes of shadow: p95 latency and share graded ok (stable 2,170 ms, 0.907; Arabic 9% of requests)</div></div>
+  <aside class="notes"><p>From the course's run of Lab 2.3, step 1. The shadow looks good. Keep the Arabic share in mind: it is the reason the shadow is misleading.</p></aside>
+</section>
+
+<section class="slide" data-label="Analysis" id="canary-analysis" data-lo="LO3">
+  <div class="kicker">Lab 2.3 · step 2</div>
+  <h2>An analysis needs a minimum sample, a paired comparison and stated triggers</h2>
+  <pre class="code s" data-file="Lab 2.3"><code class="language-python">if n &lt; MIN_SAMPLE:                       # 50
+    return "inconclusive", f"{n} requests"
+if p95 &gt; SLO_P95_MS:                      # 2,500 ms
+    return "fail", "latency trigger: ..."
+if ok &lt; ok_stable_same_requests - 0.05:   # paired
+    return "fail", "quality trigger: ..."
+return "pass", why</code></pre>
+  <aside class="notes"><p>"Inconclusive" is not "pass": the rollout waits, and after a second inconclusive window it pauses for a person. The quality comparison uses the stable version's grade on the same requests, which removes the effect of the question mix.</p></aside>
+</section>
+
+<section class="slide" data-label="Steps" id="argo-style-steps" data-lo="LO3">
+  <div class="kicker">Lab 2.3 · step 3</div>
+  <h2>Steps in the Argo Rollouts style: set a weight, pause, analyse</h2>
+  <div class="flow">
+    <div class="step c-teal"><b>setWeight 5</b>pause 60 min</div>
+    <div class="arrow">→</div>
+    <div class="step c-cyan"><b>setWeight 25</b>pause 30 min</div>
+    <div class="arrow">→</div>
+    <div class="step c-amber"><b>setWeight 50</b>pause 30 min</div>
+    <div class="arrow">→</div>
+    <div class="step c-purple"><b>100</b>promote</div>
+  </div>
+  <p class="small mt">In Argo Rollouts, <code>steps</code> hold <code>setWeight</code> and <code>pause</code>; a background <code>analysis</code> that fails aborts the rollout and traffic returns to the stable version.</p>
+  <aside class="notes"><p>Sources: Argo Rollouts documentation, Canary strategy. The lab's K.run_rollout follows those semantics on replayed traffic so it runs anywhere; labs/cluster/ has the same steps as a Rollout object and the triggers as an AnalysisTemplate.</p></aside>
+</section>
+
+<section class="slide" data-label="Rolled back" id="rolled-back-at-25" data-lo="LO3">
+  <div class="kicker">Lab 2.3 · step 4, from the course's run</div>
+  <h2>5% passed; at 25% the latency trigger rolled the canary back</h2>
+  <div class="trace s">
+    <div class="ev call"><b>minute 0</b>setWeight 5</div>
+    <div class="ev result"><b>minute 60</b>pass: n=70, p95 2,123 ms, ok 0.900 against stable 0.914, Arabic 4%</div>
+    <div class="ev call"><b>minute 60</b>setWeight 25</div>
+    <div class="ev error"><b>minute 90</b>fail, latency trigger: n=157, p95 3,115 ms, ok 0.803 against stable 0.873, Arabic 43%</div>
+    <div class="ev guard"><b>minute 90</b>abort: rolled back to stable</div>
+  </div>
+  <aside class="notes"><p>The next shift asks mostly in Arabic from minute 70, and the new snapshot is slow and weaker on Arabic text (planted in the replay). The quality trigger would have fired too: 0.803 against 0.873 is more than 0.05 below. The release log gets one more line: rolled back, latency trigger, with the numbers.</p></aside>
+</section>
+
+<section class="slide" data-label="Lesson" id="traffic-decides" data-lo="LO3">
+  <div class="kicker">What the canary saw that nothing else did</div>
+  <h2>A candidate is only tested on the traffic it has seen</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Offline gate</h4><p class="small mb0">Fixed cases, mostly English: passed.</p></div>
+    <div class="card c-cyan"><h4>Shadow, 30 minutes</h4><p class="small mb0">9% Arabic: looked better than stable.</p></div>
+    <div class="card c-coral"><h4>Canary at 25%</h4><p class="small mb0">43% Arabic: failed on latency and quality.</p></div>
+  </div>
+  <div class="callout tip small mt"><b>Fix the instruments too.</b> Add Arabic cases to the offline set and run the shadow across a shift change before the next canary.</div>
+  <aside class="notes"><p>Ask each table for one change to the offline set. This is also why the canary's analysis states its sample: a reviewer can see that the 5% window was English-heavy.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-3" data-lo="LO3">
+  <div class="kicker">Checkpoint</div>
+  <h2>A clean first window</h2>
+  <div class="quiz" data-type="single" data-lo="LO3">
+    <p class="lead">At 5% the canary served 40 requests in its first pause, with no latency or quality problem. The analysis's minimum sample is 50. What should the rollout do?</p>
+    <div class="opts">
+      <div class="opt" data-why="Reads absence of evidence as evidence of absence">Advance to 25%: nothing went wrong</div>
+      <div class="opt" data-ok>Report inconclusive and extend the pause before deciding</div>
+      <div class="opt" data-why="Punishes a candidate for low traffic, not for a problem">Roll back: the sample is too small</div>
+      <div class="opt" data-why="Changes the rule mid-release to fit the data">Lower the minimum sample to 40 for this release</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> A short clean window says little. The rule waits for enough requests and, if still short, hands the decision to a person.</div>
+  </div>
+  <aside class="notes"><p>Answer: B. K.run_rollout extends an inconclusive pause once, then pauses for a person.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-2-3" data-auto="lab" data-lab="2.3">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>Usual problems: comparing the canary with the stable version's overall rate instead of the same requests; p95 computed over all traffic instead of the canary's window; forgetting the inconclusive branch. The stretch writes an AnalysisTemplate; compare it with labs/cluster/analysis-template.yaml.</p></aside>
 </section>
 
-<!-- Session 4 -->
-
+<!-- ======================= SESSION 4 ======================= -->
 <section class="slide section" id="s4" data-auto="section" data-session="4"></section>
 
-<section class="slide" id="s4-idea" data-lo="LO6">
-  <div class="kicker">REPLACE: the question this slide answers</div>
-  <h2>REPLACE: one idea, stated as a sentence</h2>
+<section class="slide" data-label="Per outcome" id="cost-per-success" data-lo="LO6">
+  <div class="kicker">Cost signals</div>
+  <h2>Divide what a system cost by the outcomes it delivered, not by its calls</h2>
   <div class="cols cols-2">
-    <ul class="bullets">
-      <li>REPLACE: at most six bullets, each a complete thought</li>
-      <li>REPLACE: bold the key phrase; numbers come from the lab run, not from memory</li>
+    <ul class="bullets small">
+      <li>Failed attempts are paid for too; the work still has to be done.</li>
+      <li>Each system needs an outcome someone agrees on: a confirmed fault, an accepted answer, a resolved report.</li>
+      <li>Prices in the lab are stated assumptions in riyals; replace them with your provider's list.</li>
     </ul>
-    <div class="card c-teal"><h4>In the case study</h4><p class="small mb0">REPLACE: tie the idea to the case study and its data</p></div>
+    <div class="card c-coral flat"><h4>The trap</h4><p class="small mb0">A model with half the price per call and twice the retries costs more per success.</p></div>
   </div>
-  <div class="callout warn mt"><b>What goes wrong.</b> REPLACE: the failure participants will hit, and how to recognise it</div>
-  <aside class="notes">REPLACE: what to say, the demo to run, the question to ask the room, the common failure and its fix</aside>
+  <aside class="notes"><p>Agree the outcome definition with the business owner before the first report: Saqer for Nabd, customer care for Mubadir, Lamya for the classifier. data/prices.json says the prices are course assumptions.</p></aside>
 </section>
 
-<section class="slide" id="s4-steps" data-lo="LO6">
-  <div class="kicker">Step by step</div>
-  <h2>REPLACE: a process, shown one step per key press</h2>
-  <div class="flow">
-    <div class="step c-teal"><b>1 · REPLACE: name</b>REPLACE: what happens first</div>
-    <div class="arrow frag" data-frag="b">→</div><div class="step c-cyan frag" data-frag="b"><b>2 · REPLACE: name</b>REPLACE: the next piece</div>
-    <div class="arrow frag" data-frag="c">→</div><div class="step c-coral frag" data-frag="c"><b>3 · REPLACE: name</b>REPLACE: the result</div>
+<section class="slide" data-label="October" id="october-cost-table" data-lo="LO6">
+  <div class="kicker">Lab 2.4 · step 2, from the course's run</div>
+  <h2>Per call, Mubadir looks cheap; per resolved report, it is the most expensive</h2>
+  <table class="t small">
+    <tr><th>System</th><th class="num">Cost (SAR)</th><th class="num">Per request</th><th class="num">Success rate</th><th class="num">Per success</th></tr>
+    <tr><td>classifier</td><td class="num">40.55</td><td class="num">0.0005</td><td class="num">0.34</td><td class="num">0.0635</td></tr>
+    <tr><td>Nabd</td><td class="num">106.05</td><td class="num">0.0034</td><td class="num">0.85</td><td class="num">0.0041</td></tr>
+    <tr class="hl"><td>Mubadir</td><td class="num">112.92</td><td class="num">0.0110</td><td class="num">0.70</td><td class="num">0.0156</td></tr>
+  </table>
+  <p class="small mt">The classifier's outcome is a flagged feeder that inspection confirmed; its requests are feeder scores, so its cost per request is not comparable with the others.</p>
+  <aside class="notes"><p>Synthetic month of October 2026 at assumed prices. Mubadir's daily cost per resolved report jumps from about 0.010 to 0.084 SAR on 14 to 16 October: a runaway loop, which Day 4 finds and stops.</p></aside>
+</section>
+
+<section class="slide" data-label="Cache" id="cache-hit-rate" data-lo="LO6">
+  <div class="kicker">Lab 2.4 · step 3</div>
+  <h2>A date at the top of the prompt cut Nabd's cache hit rate from 0.62 to 0.12</h2>
+  <div class="cols cols-2">
+    <div class="bars">
+      <div class="row"><span>before 18 Oct</span><div class="bar c-teal" style="--w:62%"></div><span class="val">0.62</span></div>
+      <div class="row"><span>from 18 Oct</span><div class="bar c-coral" style="--w:12%"></div><span class="val">0.12</span></div>
+    </div>
+    <ul class="bullets small">
+      <li>Provider prompt caches match the beginning of a request.</li>
+      <li>Stable text first (instructions, tools), changing text last (date, question).</li>
+      <li>Cached input tokens are priced at a tenth here: the change raised Nabd's daily cost.</li>
+    </ul>
   </div>
-  <div class="callout tip mt frag"><b>Takeaway.</b> REPLACE: the one sentence to remember</div>
-  <aside class="notes">Press once per step and say what each step adds before the next one appears. REPLACE: the example to walk through</aside>
+  <aside class="notes"><p>The tenth is the course's assumed price ratio; providers publish their own. Ask: which part of the release unit changed on the 18th? The prompt, without a release: Day 1's manifest would have caught it.</p></aside>
+</section>
+
+<section class="slide" data-label="Utilisation" id="utilisation" data-lo="LO6">
+  <div class="kicker">Resource use</div>
+  <h2>Utilisation shows what you pay for and do not use</h2>
+  <div class="bars">
+    <div class="row"><span>classifier</span><div class="bar c-coral" style="--w:12%"></div><span class="val">0.12</span></div>
+    <div class="row"><span>Mubadir</span><div class="bar c-amber" style="--w:22%"></div><span class="val">0.22</span></div>
+    <div class="row"><span>Nabd</span><div class="bar c-teal" style="--w:28%"></div><span class="val">0.28</span></div>
+  </div>
+  <p class="small mt">The classifier keeps 24 node-hours a day provisioned for one daily batch and a monthly retrain. Scale it to zero between runs, or share the nodes.</p>
+  <aside class="notes"><p>Processor hours used over hours provisioned, October. For language model systems that call a hosted model, tokens are the main cost and utilisation concerns only the service around them; for a self-hosted model (AE-205) utilisation of the serving hardware dominates.</p></aside>
+</section>
+
+<section class="slide" data-label="Showback" id="showback-and-alerts" data-lo="LO6">
+  <div class="kicker">Lab 2.4 · step 4</div>
+  <h2>Show each team its cost, and alert before the budget is gone</h2>
+  <div class="cols cols-2">
+    <table class="t small">
+      <tr><th>Team</th><th class="num">SAR</th></tr>
+      <tr><td>customer-care (Mubadir)</td><td class="num">112.92</td></tr>
+      <tr><td>field-operations (Nabd)</td><td class="num">84.75</td></tr>
+      <tr><td>asset-management (classifier)</td><td class="num">40.55</td></tr>
+      <tr><td>control-room (Nabd)</td><td class="num">21.29</td></tr>
+    </table>
+    <div class="stack">
+      <div class="card c-teal flat"><h4>Burn rate, from day 7</h4><p class="small mb0">Month-to-date spend above the budget's share by 20%: Mubadir alerted on 15 October.</p></div>
+      <div class="card c-coral flat"><h4>Forecast</h4><p class="small mb0">Projected month-end above budget: Mubadir on the 14th, but also the classifier on the 7th, because of its planned retrain.</p></div>
+    </div>
+  </div>
+  <aside class="notes"><p>Budgets are course assumptions (classifier 60, Nabd 100, Mubadir 90 SAR). The forecast is earlier and noisier: the classifier's forecast alert is a false alarm caused by a planned job inside the seven-day window. Exclude planned jobs from forecasts, or forecast them separately.</p></aside>
+</section>
+
+<section class="slide" id="checkpoint-4" data-lo="LO6">
+  <div class="kicker">Checkpoint</div>
+  <h2>Cheaper per call</h2>
+  <div class="quiz" data-type="single" data-lo="LO6">
+    <p class="lead">A new configuration of Mubadir halves the cost per model call, but the share of reports resolved without a person drops from 0.70 to 0.40. What happens to the cost per resolved report?</p>
+    <div class="opts">
+      <div class="opt" data-why="Divides by calls instead of outcomes">It halves, like the cost per call</div>
+      <div class="opt" data-why="Ignores that every unresolved report still cost its calls">It stays the same: the work is the same</div>
+      <div class="opt" data-ok>It falls only slightly, and every unresolved report adds a person's time on top</div>
+      <div class="opt" data-why="Assumes tokens are the only cost of a failure">It cannot be known without the token counts</div>
+    </div>
+    <div class="callout tip why"><b>Why.</b> Half the cost spread over 0.40 instead of 0.70 successes is 0.5 × 0.70 / 0.40 ≈ 0.88 of the old cost per success, and the 30% more failures each need a person.</div>
+  </div>
+  <aside class="notes"><p>Answer: C. Work the arithmetic on the board.</p></aside>
 </section>
 
 <section class="slide lab" id="lab-2-4" data-auto="lab" data-lab="2.4">
-  <aside class="notes">REPLACE: what to watch for while participants work, the typical problems, and the fallback for anyone who did not finish an earlier lab</aside>
+  <aside class="notes"><p>Usual problems: pricing cached tokens at the full input price; dividing by requests for the classifier, whose requests are feeder scores; alerting on daily spend, which fires on every planned retrain. Ask early finishers to find the cause of Mubadir's expensive days in the data: tokens per session.</p></aside>
 </section>
 
-<section class="slide" id="wrap-up">
-  <div class="kicker">Day 2 · wrap-up</div>
-  <h2>Three things to keep</h2>
-  <div class="cols cols-3">
-    <div class="card c-teal"><h4>Remember</h4><p class="small mb0">REPLACE: one idea participants keep</p></div>
-    <div class="card c-coral"><h4>Remember</h4><p class="small mb0">REPLACE: one idea participants keep</p></div>
-    <div class="card c-purple"><h4>Remember</h4><p class="small mb0">REPLACE: one idea participants keep</p></div>
+<!-- ======================= CLOSING ======================= -->
+<section class="slide" data-label="Recap" id="day-2-recap">
+  <div class="kicker">Day 2 recap</div>
+  <h2>One artefact to production, a gate and a canary for model changes, and cost per outcome</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-teal"><h4>Delivery</h4><p class="small mb0">Build once, promote the digest, a reviewer who did not merge.</p></div>
+    <div class="card c-cyan"><h4>Releases on evidence</h4><p class="small mb0">Offline gate with floors, then a canary with stated triggers.</p></div>
+    <div class="card c-coral"><h4>Cost signals</h4><p class="small mb0">Per successful outcome, cache hit rate, utilisation, alerts.</p></div>
   </div>
+  <aside class="notes"><p>The release log now holds two shipped releases and one rolled back on a stated metric. Delivery and rollback are 20 of the rubric's 100.</p></aside>
 </section>
 
-<section class="slide dark" id="next" data-label="Next">
-  <div class="kicker">Next</div>
-  <h2>Day 3: Observe</h2>
-  <p class="lead">REPLACE: what participants prepare before then; unfinished labs can be finished at home</p>
-  <aside class="notes">REPLACE: accounts, installs or reading participants need before the next unit</aside>
+<section class="slide dark" data-label="Tomorrow" id="tomorrow-observe">
+  <div class="kicker">Tomorrow · Day 3</div>
+  <h2>Observe: traces, drift monitors that do not cry wolf, online evaluation and a retraining policy</h2>
+  <p class="lead">Tomorrow you find out why Nabd is slow, replay a month of inputs with two hidden shifts, and grade a week of live answers.</p>
+  <aside class="notes"><p>Every Day 3 lab starts from its own reference state.</p></aside>
 </section>

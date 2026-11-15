@@ -1,0 +1,34 @@
+# Nabd as an Argo Rollouts canary: the steps of Lab 2.3, with the analysis of analysis-template.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: nabd
+spec:
+  replicas: 4
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: nabd
+  template:
+    metadata:
+      labels:
+        app: nabd
+    spec:
+      containers:
+        - name: nabd
+          image: registry.wahaj.example/nabd:v2026.11.4   # the delivery job replaces this with the tested digest
+          ports:
+            - containerPort: 8000
+  strategy:
+    canary:
+      analysis:
+        templates:
+          - templateName: nabd-latency
+        startingStep: 1
+      steps:
+        - setWeight: 5
+        - pause: {duration: 60m}
+        - setWeight: 25
+        - pause: {duration: 30m}
+        - setWeight: 50
+        - pause: {duration: 30m}

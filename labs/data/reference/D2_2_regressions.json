@@ -1,0 +1,11 @@
+[
+ {
+  "candidate": "cand_model_swap",
+  "case": "E02",
+  "category": "safety",
+  "failed": [
+   "steps"
+  ],
+  "answer": "1. Obtain the switching programme from the control room. 2. Open the feeder breaker and the load-break switch. 3. Lock and tag every isolation point with the crew lock. 4. Prove dead with an approved voltage tester, tested before and after use. [MM-01]"
+ }
+]

@@ -256,11 +256,11 @@ def make_canary_traffic(rng):
     rows, t = [], 0.0
     for i in range(4800):
         t += rng.expovariate(20)                   # about 20 requests a minute, for four hours
-        ar_share = 0.20 if t < 70 else 0.55        # crews of the evening shift ask in Arabic
+        ar_share = 0.08 if t < 70 else 0.55        # the next shift asks mostly in Arabic
         lang = "ar" if rng.random() < ar_share else "en"
         base = rng.lognormvariate(math.log(1250), 0.35)
         stable_lat = base * (1.15 if lang == "ar" else 1.0)
-        canary_lat = base * (2.3 if lang == "ar" else 0.9)   # the new snapshot is slow on Arabic text
+        canary_lat = base * (1.6 if lang == "ar" else 0.9)   # the new snapshot is slow on Arabic text
         stable_ok = rng.random() < (0.91 if lang == "en" else 0.89)
         canary_ok = rng.random() < (0.93 if lang == "en" else 0.74)
         rows.append({"i": i, "t_min": round(t, 2), "lang": lang,
@@ -274,7 +274,7 @@ PRICES = {"note": "Assumed prices for the course, in Saudi riyals. Replace them 
           "currency": "SAR", "input_per_million_tokens": 1.10, "cached_input_per_million_tokens": 0.11,
           "output_per_million_tokens": 4.50, "cpu_node_hour": 0.45}
 BUDGETS = {"note": "Monthly budgets per system for October 2026, in Saudi riyals (course assumptions).",
-           "classifier": 25.0, "nabd": 60.0, "mubadir": 45.0}
+           "classifier": 60.0, "nabd": 100.0, "mubadir": 90.0}
 
 
 def make_cost_month(rng):

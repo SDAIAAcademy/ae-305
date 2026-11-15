@@ -291,6 +291,383 @@
       "level": "apply",
       "pool": "practice",
       "weight": 1
+    },
+    {
+      "id": "q-d2-promote-digest",
+      "type": "single",
+      "prompt": "Staging tested Nabd's image yesterday. Today the production job builds the image again from the same commit and deploys it. Why is this a problem?",
+      "options": [
+        "The commit may have been changed since yesterday",
+        "A second build takes longer than a deploy",
+        "The production build may differ from what staging tested",
+        "Production needs a different tag than staging"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "Only the digest that passed staging is known to work; a rebuild can pull newer base images or packages.",
+      "misconceptions": [
+        "Commits are immutable; base images and packages are not",
+        "Treats the issue as speed, not identity",
+        "",
+        "A different tag is still a different build"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 1,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-approval-location",
+      "type": "single",
+      "prompt": "Dhafer wants production deploys of Nabd to need an approval that a pull request cannot remove. Where does he put the rule on GitHub?",
+      "options": [
+        "In a step of the workflow file that waits for a comment",
+        "In a branch name convention",
+        "In the README of the repository",
+        "In the production environment's protection rules"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "Required reviewers on the environment are repository settings, outside the files a pull request can change.",
+      "misconceptions": [
+        "A pull request can edit the file and remove the step",
+        "Names do not stop a job from running",
+        "Documentation does not enforce anything",
+        ""
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 1,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-self-review",
+      "type": "single",
+      "prompt": "Dhafer merged a change to Nabd and is also on the production reviewer list. Self-review is blocked. Who can approve the release?",
+      "options": [
+        "Another listed reviewer, such as Mutab",
+        "Anyone in the team with write access",
+        "Dhafer, because he is a reviewer",
+        "Nobody: the release must be merged again by someone else"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "One approval from a listed reviewer who did not merge lets the production job start.",
+      "misconceptions": [
+        "",
+        "Ignores the reviewer list",
+        "Ignores the self-review rule",
+        "Invents a rule; one other reviewer is enough"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 1,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-one-part",
+      "type": "single",
+      "prompt": "A candidate release of Nabd changes the prompt and the model at once, and the gate blocks it. What is the main drawback of this release?",
+      "options": [
+        "It costs more to evaluate",
+        "The result does not say which change caused the block",
+        "It must be rolled back twice",
+        "The gate cannot run on two changes"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "Changing one part per release lets a gate result point at its cause.",
+      "misconceptions": [
+        "Evaluation cost is the same for any candidate",
+        "",
+        "A rollback restores the whole release at once",
+        "The gate runs; the problem is reading its result"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 2,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-safety-floor",
+      "type": "single",
+      "prompt": "A cheaper model keeps answer correctness at 0.917 but completes 5 of 6 safety procedures. The gate has a floor of 1.00 on safety steps. What is the decision?",
+      "options": [
+        "Ship: the overall score is unchanged",
+        "Ship to half the crews to compare",
+        "Block, and log the safety metric and the failing case",
+        "Rerun the gate until it passes"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "A floor with no allowed drop blocks the release on one failure; the log names the metric and the case.",
+      "misconceptions": [
+        "Lets an average decide a rule written as a floor",
+        "Exposes crews to an incomplete isolation procedure",
+        "",
+        "Games the gate instead of fixing the model"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 2,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-index-gate",
+      "type": "single",
+      "prompt": "The platform team refreshes Nabd's manuals index without changing code, prompt or model. Should the refresh go through the evaluation gate?",
+      "options": [
+        "Only if the number of chunks changes",
+        "No: no code changed",
+        "No: new manuals can only improve answers",
+        "Yes: it changes what the model reads"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "The index decides the context; a refresh is a release and is gated like one.",
+      "misconceptions": [
+        "Content can change with the same chunk count",
+        "Treats code as the only part that changes behaviour",
+        "A new section can outrank the right one or split a procedure",
+        ""
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 2,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-min-sample",
+      "type": "single",
+      "prompt": "At 5% the canary served 30 requests in its pause with no problems. The analysis's minimum sample is 50. What should happen?",
+      "options": [
+        "Report inconclusive and extend the pause",
+        "Roll back",
+        "Advance to 25%",
+        "Lower the minimum sample for this release"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "Below the minimum sample there is no evidence either way: wait, then hand the decision to a person.",
+      "misconceptions": [
+        "",
+        "Punishes low traffic instead of a problem",
+        "Treats a quiet window as evidence",
+        "Changes the rule to fit the data"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 3,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-paired",
+      "type": "single",
+      "prompt": "Why does the canary analysis compare the candidate's graded answers with the stable version's grades on the same requests rather than with last week's average?",
+      "options": [
+        "Last week's average is not stored",
+        "The same requests remove the effect of a changing question mix",
+        "It makes the canary faster",
+        "The stable version is always right"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "The question mix changes through the day; a paired comparison leaves only the difference between versions.",
+      "misconceptions": [
+        "The issue is validity, not storage",
+        "",
+        "Pairing does not change speed",
+        "The stable version is a baseline, not a truth"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 3,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-shadow-miss",
+      "type": "single",
+      "prompt": "A new model snapshot passed the offline gate and 30 minutes of shadow, then failed at 25% when the next shift asked mostly in Arabic. What should change before the next attempt?",
+      "options": [
+        "Skip the shadow: it was misleading",
+        "Raise the latency objective",
+        "Add Arabic cases offline and shadow across a shift change",
+        "Go straight to 50% to get a larger sample"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "A candidate is tested only on the traffic it sees; the instruments need traffic like the failing shift.",
+      "misconceptions": [
+        "Removes a safe source of evidence",
+        "Moves the rule instead of the evidence",
+        "",
+        "Exposes more users to a known failure"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 3,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-cost-per-success",
+      "type": "single",
+      "prompt": "A configuration halves Mubadir's cost per model call, but its resolved share drops from 0.70 to 0.40. About how does the cost per resolved report change?",
+      "options": [
+        "It halves",
+        "It is unchanged",
+        "It doubles",
+        "It falls only slightly, and unresolved reports need a person"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "0.5 x 0.70 / 0.40 is about 0.88 of the old cost per success, before the extra human work.",
+      "misconceptions": [
+        "Divides by calls, not outcomes",
+        "Ignores both the price and the success rate",
+        "Ignores that each call is cheaper",
+        ""
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day2",
+      "session": 4,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-cache",
+      "type": "single",
+      "prompt": "Someone added the current date as the first line of Nabd's system prompt, and the cache hit rate fell from 0.62 to 0.12. Why?",
+      "options": [
+        "Prompt caches match the start of a request, and the start now changes daily",
+        "The provider stopped caching dates",
+        "Dates make prompts longer",
+        "Cached tokens expire at midnight"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "Stable text belongs first and changing text last, so the cached prefix stays the same.",
+      "misconceptions": [
+        "",
+        "Invents a provider rule",
+        "Length is not the cause",
+        "The cause is the changing prefix, not expiry"
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day2",
+      "session": 4,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-forecast-false",
+      "type": "single",
+      "prompt": "A month-end forecast alert fires for the fault-risk classifier on the 7th; its spend jumped on the day of the planned monthly retrain. What is the best fix?",
+      "options": [
+        "Remove budget alerts for the classifier",
+        "Forecast planned jobs separately from daily running cost",
+        "Raise the classifier's budget until the alert stops",
+        "Alert only on the last day of the month"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "A planned job inside the forecast window inflates the projection; treat it as a known item.",
+      "misconceptions": [
+        "Loses the signal for real overspend",
+        "",
+        "Hides the cause behind a bigger number",
+        "Too late to act"
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day2",
+      "session": 4,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d2-showback",
+      "type": "single",
+      "prompt": "Finance asks why AI costs are shown per team instead of as one platform bill. What is the main reason?",
+      "options": [
+        "It is required to move money between teams",
+        "It makes the total bill smaller",
+        "Teams decide their use, so seeing their own cost changes their choices",
+        "It hides the cost of the platform team"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "Showback puts cost in front of the people who choose how much to use.",
+      "misconceptions": [
+        "That is chargeback, not showback",
+        "Showing costs does not reduce them by itself",
+        "",
+        "Showback is about visibility, not hiding"
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day2",
+      "session": 4,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
     }
   ]
 }
