@@ -1132,6 +1132,441 @@
       "level": "analyze",
       "pool": "practice",
       "weight": 1
+    },
+    {
+      "id": "q-d4-bundle-parts",
+      "type": "single",
+      "prompt": "Which of these belongs in Mubadir's released bundle?",
+      "options": [
+        "The session logs of last week",
+        "The customer database",
+        "The model provider's weights",
+        "The sandbox policy of allowed tools and readable fields"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "Prompt, tool schemas, harness settings and sandbox policy together decide behaviour; they are versioned as one bundle.",
+      "misconceptions": [
+        "Logs are produced by runs, not released",
+        "Data the agent reads is not part of its release",
+        "The bundle names a model; it does not contain it",
+        ""
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 1,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-bundle-version",
+      "type": "single",
+      "prompt": "A developer adds one property to a tool schema in Mubadir's working copy. What should happen to the bundle version?",
+      "options": [
+        "It changes, because a file of the bundle changed",
+        "Nothing: the prompt is unchanged",
+        "It changes only if the model is swapped",
+        "It changes at the next monthly release"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "A content version is a hash of every file, so any change moves it.",
+      "misconceptions": [
+        "",
+        "Treats the prompt as the only behaviour-changing part",
+        "Ignores tools, harness and sandbox",
+        "A version follows content, not the calendar"
+      ],
+      "lo": [
+        "LO1"
+      ],
+      "day": "day4",
+      "session": 1,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-run-released",
+      "type": "single",
+      "prompt": "Why should Mubadir run only from the released bundle folder and record its version in each session log?",
+      "options": [
+        "Because the working copy is slower",
+        "So an incident can name exactly what was running",
+        "So developers cannot read the prompt",
+        "Because session logs need a file name"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "What ran must be what was versioned and tested; the log ties each session to it.",
+      "misconceptions": [
+        "Speed is not the reason",
+        "",
+        "Secrecy is not the reason",
+        "A name is not the evidence"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 1,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-resume",
+      "type": "single",
+      "prompt": "Mubadir's ticket flow crashes after creating a ticket and before notifying the crew. With a checkpointer, what does resuming the same thread do?",
+      "options": [
+        "Runs the whole flow again from the start",
+        "Deletes the ticket and starts again",
+        "Runs only notify_crew, using the saved ticket id",
+        "Asks the model what to do next"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "The checkpoint holds the state after each step, so only the missing steps run.",
+      "misconceptions": [
+        "That is a restart, which opens a second ticket",
+        "Nothing is undone on resume",
+        "",
+        "The saved state already says the next step"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 2,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-timeout-write",
+      "type": "single",
+      "prompt": "The ticket service times out on create_ticket and the harness retries. Two tickets appear. What happened?",
+      "options": [
+        "The model called the tool twice on purpose",
+        "The database duplicated a row",
+        "The checkpointer replayed the step",
+        "The first call committed before the timeout, so the retry wrote again"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "A timeout does not say whether the write happened.",
+      "misconceptions": [
+        "The harness retried; the model did not",
+        "Each call wrote once",
+        "Checkpoints do not run inside one step",
+        ""
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 2,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-idem-key",
+      "type": "single",
+      "prompt": "Which idempotency key makes create_ticket safe to retry?",
+      "options": [
+        "A hash of the session, the tool and its arguments",
+        "A random number per call",
+        "The current time in milliseconds",
+        "The customer's account alone"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "The key must be the same for the same intended write and different for a different one.",
+      "misconceptions": [
+        "",
+        "Each retry gets a new key",
+        "Each retry gets a new key",
+        "A second, different report from the same customer would be refused"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 2,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-which-tools-key",
+      "type": "single",
+      "prompt": "Which of Mubadir's tools most need an idempotency key?",
+      "options": [
+        "find_customer",
+        "create_ticket and notify_crew",
+        "get_outage",
+        "None, if there is a checkpointer"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "Writes repeat their effect on retry; reads do not.",
+      "misconceptions": [
+        "A read can be retried freely",
+        "",
+        "A read can be retried freely",
+        "Checkpoints do not cover a retry inside one step"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 2,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-replay-why",
+      "type": "single",
+      "prompt": "Why reproduce INC-0412 by replaying its recording instead of sending the same report again?",
+      "options": [
+        "The customer must not be contacted again",
+        "Replay is cheaper than a model call",
+        "The recording holds the exact model outputs and tool responses",
+        "Live runs are not allowed after an incident"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "Services and models have moved on; only the recording returns the same failure every time.",
+      "misconceptions": [
+        "Not the reason the failure would hide",
+        "Cost is a side benefit, not the reason",
+        "",
+        "Invents a rule"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 3,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-cause",
+      "type": "single",
+      "prompt": "In INC-0412, get_outage returned \"restored\" with an age of 140 minutes and Mubadir closed the report. Where does the fix belong?",
+      "options": [
+        "A stronger prompt instruction only",
+        "Deleting the read replica",
+        "A larger model",
+        "A guard in the harness that blocks a close on a stale status"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "A harness guard runs on every call and can be tested by replay.",
+      "misconceptions": [
+        "Followed most of the time, not every time",
+        "Removes capacity without checking freshness",
+        "The model did what its prompt said",
+        ""
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 3,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-suite",
+      "type": "single",
+      "prompt": "After adding the freshness guard, which result shows that it is not simply blocking every close?",
+      "options": [
+        "The case with a fresh \"restored\" still closes the report",
+        "The unknown-account case passes",
+        "The suite runs faster",
+        "INC-0412 now passes"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "A regression suite keeps a case that must still succeed next to the case that must now be blocked.",
+      "misconceptions": [
+        "",
+        "It never reaches close_report",
+        "Speed says nothing about correctness",
+        "It would pass if every close were blocked"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 3,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-gateway",
+      "type": "single",
+      "prompt": "Why put step and spend limits at the gateway and not only in the harness's max_steps?",
+      "options": [
+        "The harness cannot count steps",
+        "The gateway sees every session of every version and the money spent",
+        "Gateways make calls faster",
+        "max_steps is ignored by models"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "A bug or a new bundle can raise the harness limit; the gateway still holds.",
+      "misconceptions": [
+        "It can; the gateway adds a second, shared check",
+        "",
+        "Not the reason",
+        "The harness enforces it, not the model"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 4,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-loop-cost",
+      "type": "single",
+      "prompt": "A runaway session made 80 model calls; input tokens grew from 127 to 3,609 per call. Why did it cost far more than 80 times the first call?",
+      "options": [
+        "Output tokens are priced higher",
+        "The provider raised prices during the loop",
+        "Each call resends the whole conversation, so calls grow longer",
+        "Cached tokens are free"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "Cost per call grows with the conversation, so a loop costs roughly with the square of its length.",
+      "misconceptions": [
+        "Output stayed short",
+        "Invents a cause",
+        "",
+        "Caching would lower the cost, not raise it"
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day4",
+      "session": 4,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-kill-version",
+      "type": "single",
+      "prompt": "Every session of Mubadir's new version loops on the same pending status. What does the kill switch stop?",
+      "options": [
+        "All of Mubadir, every version",
+        "The outage service",
+        "Only the sessions that already hit the limit",
+        "That version, so the previous version or people keep serving"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "A kill switch per version stops a shared failure without causing an outage of its own.",
+      "misconceptions": [
+        "Stops the working version too",
+        "The agent is the one looping",
+        "The others would keep looping",
+        ""
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 4,
+      "level": "apply",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-handover",
+      "type": "single",
+      "prompt": "After the kill switch, what must happen to the stopped sessions?",
+      "options": [
+        "Keep them with their messages and hand them to people",
+        "Restart them on the same version",
+        "Delete them to save storage",
+        "Send each customer an automatic apology"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "Stored sessions let a person finish the work and let the incident be replayed.",
+      "misconceptions": [
+        "",
+        "They would loop again",
+        "Loses customers and the incident evidence",
+        "Does not finish the work"
+      ],
+      "lo": [
+        "LO5"
+      ],
+      "day": "day4",
+      "session": 4,
+      "level": "understand",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d4-litellm",
+      "type": "single",
+      "prompt": "In LiteLLM's proxy, which pair of settings puts a daily spend limit on a virtual key?",
+      "options": [
+        "rpm_limit and tpm_limit",
+        "max_budget and budget_duration",
+        "timeout and retries",
+        "model_list and api_key"
+      ],
+      "correct": [
+        1
+      ],
+      "explanation": "max_budget with budget_duration (for example 1d) is a spend limit that resets; budgets need the proxy database.",
+      "misconceptions": [
+        "Those limit rates, not spend",
+        "",
+        "Those govern calls, not money",
+        "Those configure models"
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day4",
+      "session": 4,
+      "level": "remember",
+      "pool": "practice",
+      "weight": 1
     }
   ]
 }
