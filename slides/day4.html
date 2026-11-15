@@ -382,6 +382,19 @@ graph.invoke(None, {"configurable": {"thread_id": "S-4202"}})   # resume after a
   <aside class="notes"><p>Sources: LiteLLM documentation on budgets and rate limits (checked November 2026). The configuration in the lab is not run: it needs a database and a proxy. Tool names are examples, not endorsements.</p></aside>
 </section>
 
+<section class="slide" data-label="Runbook" id="agent-runbook" data-lo="LO5">
+  <div class="kicker">Runbooks · recap from AE-205, now for three systems</div>
+  <h2>A runbook says how to detect, who decides, how to roll back and how to stop</h2>
+  <table class="t small">
+    <tr><th>System</th><th>Detect</th><th>Decide</th><th>Roll back</th><th>Stop</th></tr>
+    <tr><td>Classifier</td><td>contract report, drift alert, AUC by region</td><td>Lamya</td><td>move the champion alias back</td><td>pause the retraining trigger</td></tr>
+    <tr><td>Nabd</td><td>canary analysis, online evaluation, spans</td><td>Dhafer, with Saqer</td><td>abort the rollout, redeploy the last digest</td><td>pin the previous release</td></tr>
+    <tr class="hl"><td>Mubadir</td><td>gateway stops, spend per resolved report</td><td>Dhafer or Mutab</td><td>release the previous bundle</td><td>kill switch for the version, then the handover</td></tr>
+  </table>
+  <div class="callout tip small mt"><b>Written before the incident.</b> Each cell names a signal or a command from this week's labs. The capstone's runbook has this shape.</div>
+  <aside class="notes"><p>AE-205 wrote a runbook for two alerts of one service. Here each row is a system and each cell points at something the participants built: the validation report and the regional gate (Day 1), the canary triggers and the digest (Day 2), the monitors (Day 3), the gateway policy, the kill switch and the handover (today). Ask each table to fill the Mubadir row for a second failure, the duplicate ticket: detect by two tickets on one report, roll back to the bundle before the change, fix with an idempotency key. Runbook and reproducibility are 15 of the rubric's 100.</p></aside>
+</section>
+
 <section class="slide" id="checkpoint-4" data-lo="LO5">
   <div class="kicker">Checkpoint</div>
   <h2>Six sessions looping</h2>

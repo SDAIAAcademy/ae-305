@@ -218,8 +218,8 @@ psi = sum((cur - ref) * ln(cur / ref))</code></pre>
     <li>Monthly: against the training snapshot, for slow moves that matter.</li>
     <li>When labels arrive: the model's own metrics by region, which inputs cannot replace.</li>
   </ul>
-  <div class="callout tip small mt"><b>Write the note.</b> Shifts found, alarms removed and by which rule, and what is no longer visible: Lamya signs it.</div>
-  <aside class="notes"><p>Inputs can move without hurting the model, and the model can fail with stable inputs. Day 3 Session 4 turns the alerts into a retraining decision.</p></aside>
+  <div class="callout tip small mt"><b>Three files leave the lab.</b> The dashboard (PSI per feature per day, with the threshold and the alerts), the alert rules, and the note: shifts found, alarms removed and by which rule, what is no longer visible. Lamya signs the note.</div>
+  <aside class="notes"><p>Inputs can move without hurting the model, and the model can fail with stable inputs. Session 4 turns the alerts into a retraining decision. The lab draws the dashboard as one image and writes the rules as a JSON file, so both run anywhere; in production the same series go to Prometheus and Grafana, or to a tool such as Evidently, and the rules become alert rules there.</p></aside>
 </section>
 
 <section class="slide" id="checkpoint-2" data-lo="LO4">

@@ -178,6 +178,53 @@ K.check(True, f"{len(naive)} naive alerts -> {len(tuned)} alerts, one per plante
 # 🔍 Try `persist=1`, then `threshold=0.1`. Which false alarm comes back first?
 
 # %% [markdown]
+# **The dashboard and the alert rules.** The next cell is written for you. It draws the tuned monitor as one image,
+# `artifacts/D3_2/dashboard.png` (one panel per feature: PSI against the previous seven days, the threshold, the
+# days that were not judged, and the day each alert fired), and writes the rules you tuned to
+# `artifacts/D3_2/alert_rules.json`. In production the same series go to a metrics store and a dashboard tool, and
+# the rules become alert rules there.
+
+# %%
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+RULES = {"statistic": "PSI, ten bins cut at the reference's deciles", "reference": "previous 7 days",
+         "threshold": 0.2, "persist_days": 3, "min_feeders": 200, "features": FEATURES}
+K.write_json(OUT / "alert_rules.json", RULES)
+
+rows = []
+for d in range(8, int(serving.day.max()) + 1):
+    today = serving[serving.day == d]
+    ref = serving[(serving.day >= d - 7) & (serving.day < d)]
+    rows.append({"day": d, "judged": len(today) >= RULES["min_feeders"],
+                 **{f: reference_psi(ref[f], today[f]) for f in FEATURES}})
+rolling = pd.DataFrame(rows).set_index("day")
+
+fig, axes = plt.subplots(len(FEATURES), 1, figsize=(9, 6.5), sharex=True)
+for ax, f in zip(axes, FEATURES):
+    judged = rolling[rolling.judged]
+    ax.bar(judged.index, judged[f], color="#2a9d8f", label="PSI against the previous 7 days")
+    skipped = rolling[~rolling.judged]
+    ax.bar(skipped.index, skipped[f], color="#c9c9c9", label="not judged (fewer than 200 feeders)")
+    ax.axhline(RULES["threshold"], color="#e76f51", linestyle="--", label="threshold 0.2")
+    for a in tuned:
+        if a["feature"] == f:
+            ax.axvline(a["day"], color="#264653")
+            ax.annotate(f"alert on day {a['day']} (since day {a['since']})", (a["day"], ax.get_ylim()[1] * 0.85),
+                        xytext=(4, 0), textcoords="offset points", fontsize=8)
+    ax.set_ylabel("PSI")
+    ax.set_title(f, loc="left", fontsize=10)
+axes[0].legend(fontsize=7, loc="upper left")
+axes[-1].set_xlabel("day of October 2026")
+fig.suptitle("Fault-risk classifier: input drift monitor", fontsize=11)
+fig.tight_layout()
+fig.savefig(OUT / "dashboard.png", dpi=110)
+plt.close(fig)
+print("wrote", (OUT / "dashboard.png").name, "and", (OUT / "alert_rules.json").name)
+K.check((OUT / "dashboard.png").stat().st_size > 5000, "dashboard and alert rules written")
+
+# %% [markdown]
 # ## 4 · The note: shifts found, alarms removed (5')
 #
 # ✏️ **Exercise** · Write `artifacts/D3_2/monitor_note.md` for Lamya: the two shifts (feature, first day, size),
@@ -243,4 +290,5 @@ except NotImplementedError:
 #
 # ## Carry forward
 #
-# `artifacts/D3_2/alerts.json` is the drift signal Lab 3.4's retraining trigger reads.
+# `artifacts/D3_2/alerts.json` is the drift signal Lab 3.4's retraining trigger reads. The dashboard, the alert
+# rules and the note are the evidence of this session: keep the three together in the capstone repository.

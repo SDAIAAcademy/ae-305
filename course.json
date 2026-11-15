@@ -7,7 +7,7 @@
   "lang": "en",
   "title": {
     "en": "Operating Machine Learning and Language Model Systems",
-    "ar": "تشغيل أنظمة تعلم الآلة والنماذج اللغوية"
+    "ar": "تشغيل أنظمة تعلّم الآلة والنماذج اللغوية"
   },
   "tagline": "Run models, assistants and agents in production as versioned releases that are gated, observed and safe to roll back",
   "description": "Participants run three systems of a fictional electricity distribution company in production: a fault-risk classifier retrained on monthly batches with planted drift, a field-crew assistant with retrieval and two tools, and an outage-ticket agent. They version everything that changes behaviour as one release unit, build pipelines with validation and promotion gates, release through canary stages with automatic rollback, trace requests, monitor drift and online quality, and keep the agent alive through crashes and runaway loops. Evaluators come ready-made from AE-303.",
@@ -70,7 +70,7 @@
   ],
   "case_study": {
     "name": "Wahaj Electricity Distribution Company",
-    "summary": "Wahaj is a fictional electricity distributor with six regions and 2,400 feeders that runs three systems: a feeder fault-risk classifier retrained on monthly batches, Nabd, a field-crew assistant over the maintenance manuals with two tools, and Mubadir, an outage-ticket agent. Participants version, gate, release, observe and repair all three on synthetic data generated with a fixed seed: twelve monthly batches with one corrupt and one drifted, two versions of the manuals, a replayed month of traffic with two planted shifts, recorded agent traces with one incident, and a month of cost logs."
+    "summary": "Wahaj is a fictional electricity distributor with six regions and 4,800 feeders that runs three systems: a feeder fault-risk classifier retrained on monthly batches, Nabd, a field-crew assistant over the maintenance manuals with two tools, and Mubadir, an outage-ticket agent. Participants version, gate, release, observe and repair all three on synthetic data generated with a fixed seed: twelve monthly batches with one corrupt and one drifted, two versions of the manuals, a replayed month of traffic with two planted shifts, recorded agent traces with one incident, and a month of cost logs."
   },
   "format": "intensive",
   "format_note": "Intensive: 4 teaching days of four sessions and a capstone day, with guided pre-work and a tracked follow-up task",

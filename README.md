@@ -1,7 +1,7 @@
 <!-- academy:title -->
 # Operating Machine Learning and Language Model Systems
 
-تشغيل أنظمة تعلم الآلة والنماذج اللغوية
+تشغيل أنظمة تعلّم الآلة والنماذج اللغوية
 
 AI Engineering Track · SDAIA Academy · AE-305 · Level 300
 

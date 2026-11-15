@@ -1,7 +1,7 @@
 # Operating Machine Learning and Language Model Systems: labs
 
 Hands-on notebooks for the SDAIA Academy course **AE-305 Operating Machine Learning and Language Model Systems
-(تشغيل أنظمة تعلم الآلة والنماذج اللغوية)**. Every lab operates one of the three systems of **Wahaj Electricity
+(تشغيل أنظمة تعلّم الآلة والنماذج اللغوية)**. Every lab operates one of the three systems of **Wahaj Electricity
 Distribution Company**, a fictional distributor with six regions and 4,800 feeders:
 
 - a **fault-risk classifier**, retrained on monthly feeder batches;
