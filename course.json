@@ -1,0 +1,482 @@
+{
+  "$schema": "https://sdaiaacademy.github.io/engine/schemas/course.schema.json",
+  "engine": "1",
+  "id": "ae-305",
+  "code": "AE-305",
+  "version": "2027.1.0",
+  "lang": "en",
+  "title": {
+    "en": "Operating Machine Learning and Language Model Systems",
+    "ar": "تشغيل أنظمة تعلم الآلة والنماذج اللغوية"
+  },
+  "tagline": "REPLACE: one line under the title: what participants can do after the course",
+  "description": "Participants run three systems of a fictional electricity distribution company in production: a fault-risk classifier retrained on monthly batches with planted drift, a field-crew assistant with retrieval and two tools, and an outage-ticket agent. They version everything that changes behaviour as one release unit, build pipelines with validation and promotion gates, release through canary stages with automatic rollback, trace requests, monitor drift and online quality, and keep the agent alive through crashes and runaway loops. Evaluators come ready-made from AE-303.",
+  "track": "ai-engineering",
+  "level": 300,
+  "badge": {
+    "name": "AI Engineering",
+    "level": "Associate"
+  },
+  "audience": "Practitioners. Engineers who have completed the level 200 set or can show equivalent work: a deployed model or language model application they built and can explain.",
+  "prerequisites": [
+    "AE-205 Deploying AI Services: Containers, Serving and Monitoring",
+    "AE-203 Building Applications on Language Models",
+    "Builds a container image and a continuous-integration workflow",
+    "Reads an evaluation report with pass rates and intervals",
+    "Has built a tool-calling agent, as in AE-302 or equivalent"
+  ],
+  "site": {
+    "url": "https://sdaiaacademy.github.io/ae-305/",
+    "repo": "SDAIAAcademy/ae-305"
+  },
+  "outcomes": [
+    {
+      "id": "LO1",
+      "text": "Prepare a release manifest that versions data, code, configuration, model, prompt, retrieval index and tool schemas as one unit, given two runs of the three systems that behave differently",
+      "level": "Applied",
+      "evidence": "a manifest and the unrecorded change found between the runs"
+    },
+    {
+      "id": "LO2",
+      "text": "Build a retraining pipeline, started by a drift or schedule trigger, with data validation and a promotion gate that compares challenger and champion overall and by region, given monthly feeder batches, one of them corrupt and one drifted",
+      "level": "Performance",
+      "evidence": "a triggered run that promotes on the drifted batch and stops on the corrupt one, with registry lineage"
+    },
+    {
+      "id": "LO3",
+      "text": "Deliver language model changes through an evaluation gate and a canary stage with an automatic rollback trigger, given a prompt edit, a model swap and an index refresh, one of which regresses",
+      "level": "Performance",
+      "evidence": "logs showing two releases shipped and one rolled back on a stated metric"
+    },
+    {
+      "id": "LO4",
+      "text": "Configure request tracing, drift monitors and online evaluation with a review queue, and tune alert thresholds, given a replayed month of traffic with two planted shifts",
+      "level": "Applied",
+      "evidence": "a dashboard, alert rules and a note on shifts found and false alarms removed"
+    },
+    {
+      "id": "LO5",
+      "text": "Diagnose an agent incident by replaying recorded traces and fix it with idempotent tools, durable state or a budget, given a recorded failure of the ticket agent",
+      "level": "Performance",
+      "evidence": "the failure reproduced, a fix and a new regression case"
+    },
+    {
+      "id": "LO6",
+      "text": "Measure cost per successful outcome and resource use for each system and set budget alerts, given a month of token, compute and outcome logs",
+      "level": "Applied",
+      "evidence": "a cost table by system and team, with alert rules"
+    }
+  ],
+  "case_study": {
+    "name": "REPLACE: the name of the fictional organisation every lab works on",
+    "summary": "REPLACE: two sentences on the case study and its synthetic data"
+  },
+  "format": "intensive",
+  "format_note": "Intensive: 4 teaching days of four sessions and a capstone day, with guided pre-work and a tracked follow-up task",
+  "hours": {
+    "instruction": 6,
+    "lab": 7,
+    "guided_self_study": 6,
+    "assessment": 1,
+    "capstone": 6
+  },
+  "unit": "day",
+  "days": [
+    {
+      "id": "day1",
+      "kind": "day",
+      "title": "Version and build",
+      "deck": "slides/day1.html",
+      "sessions": [
+        {
+          "title": "What changes behaviour",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO1"
+          ],
+          "lab": {
+            "id": "1.1",
+            "title": "Write a release manifest for the three systems and find the unrecorded change between two runs",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D1_1_write_release_manifest.ipynb"
+          }
+        },
+        {
+          "title": "Registries and lineage",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO1"
+          ],
+          "lab": {
+            "id": "1.2",
+            "title": "Reproduce a colleague's model from the registry and trace it to its data snapshot and commit",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D1_2_reproduce_colleague_s.ipynb"
+          }
+        },
+        {
+          "title": "Pipelines with validation",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO2"
+          ],
+          "lab": {
+            "id": "1.3",
+            "title": "Add a validation step that stops training on a corrupt monthly batch",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D1_3_add_validation_step.ipynb"
+          }
+        },
+        {
+          "title": "Promotion gates",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO2"
+          ],
+          "lab": {
+            "id": "1.4",
+            "title": "Compare a challenger with the champion overall and by region and promote only if both pass",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D1_4_compare_challenger_champion.ipynb"
+          }
+        }
+      ]
+    },
+    {
+      "id": "day2",
+      "kind": "day",
+      "title": "Deliver",
+      "deck": "slides/day2.html",
+      "sessions": [
+        {
+          "title": "Continuous delivery for models",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO3"
+          ],
+          "lab": {
+            "id": "2.1",
+            "title": "Wire merge to staging to production with an approval step",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D2_1_wire_merge_staging.ipynb"
+          }
+        },
+        {
+          "title": "Language model releases",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO3"
+          ],
+          "lab": {
+            "id": "2.2",
+            "title": "Run a prompt edit, a model swap and an index refresh through a provided evaluation gate",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D2_2_run_prompt_edit.ipynb"
+          }
+        },
+        {
+          "title": "Shadow and canary on evidence",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO3"
+          ],
+          "lab": {
+            "id": "2.3",
+            "title": "Canary a model swap on replayed traffic and let a quality and latency trigger roll it back",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D2_3_canary_model_swap.ipynb"
+          }
+        },
+        {
+          "title": "Cost and capacity signals",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO6"
+          ],
+          "lab": {
+            "id": "2.4",
+            "title": "Compute cost per successful outcome and utilisation per system and set a budget alert",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D2_4_compute_cost_per.ipynb"
+          }
+        }
+      ]
+    },
+    {
+      "id": "day3",
+      "kind": "day",
+      "title": "Observe",
+      "deck": "slides/day3.html",
+      "sessions": [
+        {
+          "title": "Tracing requests end to end",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO4"
+          ],
+          "lab": {
+            "id": "3.1",
+            "title": "Add spans for model, retrieval and tool calls to the assistant and find the slowest step",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D3_1_add_spans_model.ipynb"
+          }
+        },
+        {
+          "title": "Drift, skew and delayed labels",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO4"
+          ],
+          "lab": {
+            "id": "3.2",
+            "title": "Detect two planted shifts in a replayed month and tune thresholds to remove false alarms",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D3_2_detect_two_planted.ipynb"
+          }
+        },
+        {
+          "title": "Online evaluation and review queues",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO4"
+          ],
+          "lab": {
+            "id": "3.3",
+            "title": "Score sampled live traces with a provided calibrated grader and route failures to review",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D3_3_score_sampled_live.ipynb"
+          }
+        },
+        {
+          "title": "Retraining and refresh policies",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO2"
+          ],
+          "lab": {
+            "id": "3.4",
+            "title": "Write a retraining trigger with a cost estimate and human approval and test it on a drifted batch",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D3_4_write_retraining_trigger.ipynb"
+          }
+        }
+      ]
+    },
+    {
+      "id": "day4",
+      "kind": "day",
+      "title": "Operate agents",
+      "deck": "slides/day4.html",
+      "sessions": [
+        {
+          "title": "An agent is a bundle",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO1"
+          ],
+          "lab": {
+            "id": "4.1",
+            "title": "Package the ticket agent's prompt, tools, harness settings and sandbox policy as one versioned bundle",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D4_1_package_ticket_agent.ipynb"
+          }
+        },
+        {
+          "title": "Durable execution and safe retries",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO5"
+          ],
+          "lab": {
+            "id": "4.2",
+            "title": "Crash the agent mid-task, resume from a checkpoint and fix a tool that duplicates tickets on retry",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D4_2_crash_agent_mid.ipynb"
+          }
+        },
+        {
+          "title": "Replay to reproduce incidents",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO5"
+          ],
+          "lab": {
+            "id": "4.3",
+            "title": "Reproduce a recorded failure from stored tool responses and add it as a regression case",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D4_3_reproduce_recorded_failure.ipynb"
+          }
+        },
+        {
+          "title": "Budgets, gateways and kill switches",
+          "outcomes": [
+            "REPLACE: what a participant can do after this session"
+          ],
+          "lo": [
+            "LO6"
+          ],
+          "lab": {
+            "id": "4.4",
+            "title": "Set step and spend limits at the gateway and stop a runaway agent without losing its sessions",
+            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "minutes": 25,
+            "href": "D4_4_set_step_spend.ipynb"
+          }
+        }
+      ]
+    },
+    {
+      "id": "capstone",
+      "kind": "capstone",
+      "title": "Capstone project presentations",
+      "deck": "slides/capstone.html",
+      "subtitle": "REPLACE: the catalog gives 8 minutes for each presentation and nothing about questions; decide whether the questions are inside those minutes, set capstone.talk_minutes and capstone.qa_minutes in course.json and the timers of the now-presenting slide, and remove this line"
+    }
+  ],
+  "capstone": {
+    "summary": "A simulated release week in which a corrupt batch, a provider model update and an agent incident arrive; the participant gates, ships or rolls back each and submits a public repository with pipeline logs, a release log and a runbook, then defends it for eight minutes while the assessor injects one further fault",
+    "submission": "REPLACE: what participants submit and how: a public repository link, or a shared folder for a course without code",
+    "talk_minutes": 8,
+    "rubric": [
+      {
+        "criterion": "Pipelines and gates",
+        "weight": 25
+      },
+      {
+        "criterion": "Delivery and rollback",
+        "weight": 20
+      },
+      {
+        "criterion": "Observability",
+        "weight": 20
+      },
+      {
+        "criterion": "Agent operations",
+        "weight": 20
+      },
+      {
+        "criterion": "Runbook and reproducibility",
+        "weight": 15
+      }
+    ]
+  },
+  "labs": {
+    "kind": "notebooks",
+    "base": "labs/"
+  },
+  "tools": [
+    {
+      "slot": "Experiment tracking and model registry",
+      "examples": [
+        "MLflow",
+        "Kubeflow Model Registry"
+      ]
+    },
+    {
+      "slot": "Data versioning",
+      "examples": [
+        "DVC",
+        "lakeFS"
+      ]
+    },
+    {
+      "slot": "Pipeline orchestration",
+      "examples": [
+        "Prefect",
+        "Apache Airflow",
+        "Kubeflow Pipelines"
+      ]
+    },
+    {
+      "slot": "Validation and drift detection",
+      "examples": [
+        "pandera",
+        "Evidently",
+        "SciPy"
+      ]
+    },
+    {
+      "slot": "Continuous integration and progressive delivery",
+      "examples": [
+        "Argo Rollouts",
+        "Argo CD",
+        "GitLab CI or GitHub Actions"
+      ]
+    },
+    {
+      "slot": "Tracing, metrics and dashboards",
+      "examples": [
+        "OpenTelemetry with Langfuse",
+        "Arize Phoenix",
+        "Prometheus and Grafana"
+      ]
+    },
+    {
+      "slot": "Model and agent gateway",
+      "examples": [
+        "LiteLLM",
+        "Agent Router",
+        "agentgateway"
+      ]
+    },
+    {
+      "slot": "Durable execution",
+      "examples": [
+        "Temporal",
+        "a state-graph framework with a checkpointer"
+      ]
+    },
+    {
+      "slot": "Single-node local cluster",
+      "examples": [
+        "kind",
+        "k3d"
+      ]
+    }
+  ]
+}
