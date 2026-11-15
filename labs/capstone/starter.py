@@ -234,7 +234,7 @@ def thursday(w: Week):
     run = M.run_session(rec["events"][0]["text"], svc, session_id="S-0419-fix")
     tickets = svc.tickets()
     svc.close()
-    w.trace("rerun with the fix", status=run["status"], final=run["final"], tickets=[t["ticket_id"] for t in tickets])
+    w.trace("rerun against the ticket service that times out", status=run["status"], final=run["final"], tickets=[t["ticket_id"] for t in tickets])
     suite = K.read_json(K.DATA / "replay" / "suite.json")["cases"] + [
         {"name": "INC-0412", "recording": str(K.DATA / "replay" / "INC-0412.json"), "expect": {"blocked_tool": "close_report"}},
     ]

@@ -34,7 +34,7 @@
       - run: docker build -t registry.wahaj.example/nabd:latest .
       - run: docker push registry.wahaj.example/nabd:latest
       - run: ./deploy.sh production registry.wahaj.example/nabd:latest</code></pre>
-  <p class="small mt">Lab 2.1's checker fails it on five of seven rules: no staging, no approval, a moving tag, nothing promoted, no smoke check.</p>
+  <p class="small mt">Lab 2.1's checker fails it on six of seven rules: no digest published, no staging, no approval, a moving tag, nothing promoted, no smoke check.</p>
   <aside class="notes"><p>Ask: if production misbehaves tonight, what do you roll back to? "The previous latest" is not a version. The checker's rules are in opskit.check_workflow; read them aloud.</p></aside>
 </section>
 
