@@ -9,7 +9,7 @@
     "en": "Operating Machine Learning and Language Model Systems",
     "ar": "تشغيل أنظمة تعلم الآلة والنماذج اللغوية"
   },
-  "tagline": "REPLACE: one line under the title: what participants can do after the course",
+  "tagline": "Run models, assistants and agents in production as versioned releases that are gated, observed and safe to roll back",
   "description": "Participants run three systems of a fictional electricity distribution company in production: a fault-risk classifier retrained on monthly batches with planted drift, a field-crew assistant with retrieval and two tools, and an outage-ticket agent. They version everything that changes behaviour as one release unit, build pipelines with validation and promotion gates, release through canary stages with automatic rollback, trace requests, monitor drift and online quality, and keep the agent alive through crashes and runaway loops. Evaluators come ready-made from AE-303.",
   "track": "ai-engineering",
   "level": 300,
@@ -23,7 +23,8 @@
     "AE-203 Building Applications on Language Models",
     "Builds a container image and a continuous-integration workflow",
     "Reads an evaluation report with pass rates and intervals",
-    "Has built a tool-calling agent, as in AE-302 or equivalent"
+    "Has built a tool-calling agent, as in AE-302 or equivalent",
+    "Setup: a laptop CPU with uv, or Google Colab; a free OpenRouter key is optional, since every lab also runs on a scripted stand-in model. Nothing downloads a model. Run 00_setup_check before Day 1; see labs/README.md."
   ],
   "site": {
     "url": "https://sdaiaacademy.github.io/ae-305/",
@@ -68,8 +69,8 @@
     }
   ],
   "case_study": {
-    "name": "REPLACE: the name of the fictional organisation every lab works on",
-    "summary": "REPLACE: two sentences on the case study and its synthetic data"
+    "name": "Wahaj Electricity Distribution Company",
+    "summary": "Wahaj is a fictional electricity distributor with six regions and 2,400 feeders that runs three systems: a feeder fault-risk classifier retrained on monthly batches, Nabd, a field-crew assistant over the maintenance manuals with two tools, and Mubadir, an outage-ticket agent. Participants version, gate, release, observe and repair all three on synthetic data generated with a fixed seed: twelve monthly batches with one corrupt and one drifted, two versions of the manuals, a replayed month of traffic with two planted shifts, recorded agent traces with one incident, and a month of cost logs."
   },
   "format": "intensive",
   "format_note": "Intensive: 4 teaching days of four sessions and a capstone day, with guided pre-work and a tracked follow-up task",
@@ -90,69 +91,159 @@
       "sessions": [
         {
           "title": "What changes behaviour",
+          "summary": "Data, code, configuration, model, prompt, index and tool schemas move together as one release unit",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Name every part that changes the behaviour of a model, an assistant and an agent",
+            "Pin a provider model to an identifier that does not move",
+            "Write a release manifest and diff two of them"
           ],
           "lo": [
             "LO1"
           ],
           "lab": {
             "id": "1.1",
-            "title": "Write a release manifest for the three systems and find the unrecorded change between two runs",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "A release manifest and the unrecorded change",
             "minutes": 25,
-            "href": "D1_1_write_release_manifest.ipynb"
+            "summary": "Hash every part of two recorded runs of the three Wahaj systems into release manifests, diff them and find the change that no change log recorded.",
+            "href": "D1_1_release_manifest.ipynb",
+            "steps": [
+              {
+                "text": "Read the two run folders",
+                "minutes": 4
+              },
+              {
+                "text": "Hash every part that changes behaviour",
+                "minutes": 7
+              },
+              {
+                "text": "Build the manifest for each run",
+                "minutes": 6
+              },
+              {
+                "text": "Diff the manifests against the change log",
+                "minutes": 8
+              }
+            ],
+            "stretch": "A check that refuses a manifest whose model is a moving alias"
           }
         },
         {
           "title": "Registries and lineage",
+          "summary": "A registry entry is useful only if it leads back to the exact data, code and parameters",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Read a model version, its alias and its lineage tags",
+            "Rebuild a data snapshot from its content hash",
+            "Reproduce a colleague's model and prove it matches"
           ],
           "lo": [
-            "LO1"
+            "LO1",
+            "LO2"
           ],
           "lab": {
             "id": "1.2",
-            "title": "Reproduce a colleague's model from the registry and trace it to its data snapshot and commit",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Reproduce a model from the registry",
             "minutes": 25,
-            "href": "D1_2_reproduce_colleague_s.ipynb"
+            "summary": "Find the champion fault-risk model in the registry, follow its tags to the data snapshot and the trainer commit, retrain it and show that the metric and the predictions match.",
+            "href": "D1_2_registry_lineage.ipynb",
+            "steps": [
+              {
+                "text": "Find the champion and read its lineage",
+                "minutes": 6
+              },
+              {
+                "text": "Rebuild the data snapshot and check its hash",
+                "minutes": 6
+              },
+              {
+                "text": "Retrain with the recorded parameters",
+                "minutes": 7
+              },
+              {
+                "text": "Compare metric and predictions",
+                "minutes": 6
+              }
+            ],
+            "stretch": "Show why the latest training file does not reproduce the model"
           }
         },
         {
           "title": "Pipelines with validation",
+          "summary": "A data contract checked before training stops the run instead of training on a broken batch",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Write a data contract as a schema with types, ranges and allowed values",
+            "Add batch checks: row count and duplicate keys",
+            "Make validation a pipeline step that stops the run with a report"
           ],
           "lo": [
             "LO2"
           ],
           "lab": {
             "id": "1.3",
-            "title": "Add a validation step that stops training on a corrupt monthly batch",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "A validation step that stops training",
             "minutes": 25,
-            "href": "D1_3_add_validation_step.ipynb"
+            "summary": "Write the feeder batch contract as a pandera schema, add batch checks and run the pipeline on three monthly batches: two train, the corrupt one stops with a report.",
+            "href": "D1_3_validation_step.ipynb",
+            "steps": [
+              {
+                "text": "The contract as a schema",
+                "minutes": 8
+              },
+              {
+                "text": "Batch checks: row count and duplicates",
+                "minutes": 5
+              },
+              {
+                "text": "The step that stops the run",
+                "minutes": 7
+              },
+              {
+                "text": "Run the pipeline on three batches",
+                "minutes": 5
+              }
+            ],
+            "stretch": "Quarantine the failing rows and write the report for the data owner"
           }
         },
         {
           "title": "Promotion gates",
+          "summary": "A challenger replaces the champion only when it is better overall and not worse in any region",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Score champion and challengers on the same holdout",
+            "Compare overall and by region with a stated tolerance",
+            "Promote by moving the registry alias, with the reason logged"
           ],
           "lo": [
             "LO2"
           ],
           "lab": {
             "id": "1.4",
-            "title": "Compare a challenger with the champion overall and by region and promote only if both pass",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Champion, challenger and the regional gate",
             "minutes": 25,
-            "href": "D1_4_compare_challenger_champion.ipynb"
+            "summary": "Compare the champion with two challengers overall and by region; one is better overall but worse in Al-Jabal, one passes both; promote only the one that passes.",
+            "href": "D1_4_promotion_gate.ipynb",
+            "steps": [
+              {
+                "text": "Score the champion and two challengers",
+                "minutes": 6
+              },
+              {
+                "text": "AUC overall and by region",
+                "minutes": 6
+              },
+              {
+                "text": "The gate rule",
+                "minutes": 7
+              },
+              {
+                "text": "Promote by moving the alias",
+                "minutes": 6
+              }
+            ],
+            "stretch": "A bootstrap interval for the regional gap"
           }
         }
-      ]
+      ],
+      "subtitle": "One release unit, a reproducible model, a pipeline that stops on bad data, and a gate by region"
     },
     {
       "id": "day2",
@@ -162,69 +253,159 @@
       "sessions": [
         {
           "title": "Continuous delivery for models",
+          "summary": "Merge, staging and production promote one artefact by digest, with a person approving the last step",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Promote one artefact by digest instead of rebuilding it",
+            "Add a staging check and an approval step before production",
+            "Keep a deployment log a reviewer can audit"
           ],
           "lo": [
+            "LO1",
             "LO3"
           ],
           "lab": {
             "id": "2.1",
-            "title": "Wire merge to staging to production with an approval step",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Merge to staging to production",
             "minutes": 25,
-            "href": "D2_1_wire_merge_staging.ipynb"
+            "summary": "Turn a single-job workflow into merge, staging and production jobs that promote one digest, add the approval step, check the workflow and simulate a release.",
+            "href": "D2_1_delivery_pipeline.ipynb",
+            "steps": [
+              {
+                "text": "Read the starting workflow",
+                "minutes": 4
+              },
+              {
+                "text": "Staging and production jobs that promote one digest",
+                "minutes": 8
+              },
+              {
+                "text": "The approval step and its reviewers",
+                "minutes": 6
+              },
+              {
+                "text": "Check it and simulate a release",
+                "minutes": 7
+              }
+            ],
+            "stretch": "A rollback job that redeploys the previous digest"
           }
         },
         {
           "title": "Language model releases",
+          "summary": "A prompt edit, a model swap and an index refresh are releases, each through the same evaluation gate",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Describe each language model change as a change to the release unit",
+            "Run a provided evaluation gate on a champion and three candidates",
+            "Block a release on the metric that matters, not on the average"
           ],
           "lo": [
             "LO3"
           ],
           "lab": {
             "id": "2.2",
-            "title": "Run a prompt edit, a model swap and an index refresh through a provided evaluation gate",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Three changes through the evaluation gate",
             "minutes": 25,
-            "href": "D2_2_run_prompt_edit.ipynb"
+            "summary": "Run Nabd's prompt edit, model swap and index refresh through the provided evaluation gate, read the result by category and write the release log: two pass, one is blocked.",
+            "href": "D2_2_llm_release_gate.ipynb",
+            "steps": [
+              {
+                "text": "The release unit of each candidate",
+                "minutes": 4
+              },
+              {
+                "text": "Run the gate on the champion",
+                "minutes": 6
+              },
+              {
+                "text": "Run the three candidates",
+                "minutes": 8
+              },
+              {
+                "text": "Read by category and write the release log",
+                "minutes": 7
+              }
+            ],
+            "stretch": "Run one candidate on a live free model and compare"
           }
         },
         {
           "title": "Shadow and canary on evidence",
+          "summary": "Shadow first, then canary stages that advance only on enough evidence and roll back on a stated trigger",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Compare a candidate in shadow without user impact",
+            "Analyse a canary window with a minimum sample",
+            "Roll back automatically on a quality or latency trigger"
           ],
           "lo": [
             "LO3"
           ],
           "lab": {
             "id": "2.3",
-            "title": "Canary a model swap on replayed traffic and let a quality and latency trigger roll it back",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "A canary that rolls itself back",
             "minutes": 25,
-            "href": "D2_3_canary_model_swap.ipynb"
+            "summary": "Replay a day of Nabd traffic through a canary of a new model snapshot, analyse each stage for quality and latency and let the trigger roll it back.",
+            "href": "D2_3_canary_rollback.ipynb",
+            "steps": [
+              {
+                "text": "Shadow first",
+                "minutes": 5
+              },
+              {
+                "text": "Analyse one canary window",
+                "minutes": 8
+              },
+              {
+                "text": "Stages and triggers",
+                "minutes": 7
+              },
+              {
+                "text": "Read where and why it rolled back",
+                "minutes": 5
+              }
+            ],
+            "stretch": "Write the same analysis as an Argo Rollouts AnalysisTemplate"
           }
         },
         {
           "title": "Cost and capacity signals",
+          "summary": "Cost per successful outcome, cache hit rate and utilisation for each system, shown back by team",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Price a month of token and compute usage",
+            "Compute cost per successful outcome and utilisation per system",
+            "Show cost back by team and set a budget alert"
           ],
           "lo": [
             "LO6"
           ],
           "lab": {
             "id": "2.4",
-            "title": "Compute cost per successful outcome and utilisation per system and set a budget alert",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Cost per successful outcome",
             "minutes": 25,
-            "href": "D2_4_compute_cost_per.ipynb"
+            "summary": "Price a month of Wahaj's token, compute and outcome logs, compute cost per successful outcome, cache hit rate and utilisation per system, show it back by team and set budget alerts.",
+            "href": "D2_4_cost_signals.ipynb",
+            "steps": [
+              {
+                "text": "Price the month",
+                "minutes": 6
+              },
+              {
+                "text": "Cost per successful outcome by system",
+                "minutes": 6
+              },
+              {
+                "text": "Utilisation and cache hit rate",
+                "minutes": 5
+              },
+              {
+                "text": "Showback by team and a budget alert",
+                "minutes": 8
+              }
+            ],
+            "stretch": "Alert on the month-end forecast, not on the spend so far"
           }
         }
-      ]
+      ],
+      "subtitle": "The same artefact from merge to production, language model changes through a gate, a canary that rolls back, and the cost of each outcome"
     },
     {
       "id": "day3",
@@ -234,69 +415,159 @@
       "sessions": [
         {
           "title": "Tracing requests end to end",
+          "summary": "One trace per request with spans for retrieval, the model and each tool",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Add spans with attributes for retrieval, model and tool calls",
+            "Find the slowest step from the traces",
+            "Keep personal data out of span attributes"
           ],
           "lo": [
             "LO4"
           ],
           "lab": {
             "id": "3.1",
-            "title": "Add spans for model, retrieval and tool calls to the assistant and find the slowest step",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Spans for Nabd and the slowest step",
             "minutes": 25,
-            "href": "D3_1_add_spans_model.ipynb"
+            "summary": "Instrument Nabd with OpenTelemetry spans for retrieval, model and tool calls, run ten crew questions, find the slowest step, fix it and measure again.",
+            "href": "D3_1_tracing.ipynb",
+            "steps": [
+              {
+                "text": "A tracer with an in-memory exporter",
+                "minutes": 4
+              },
+              {
+                "text": "Spans for retrieval, model and tool",
+                "minutes": 9
+              },
+              {
+                "text": "Ten requests and the slowest step",
+                "minutes": 7
+              },
+              {
+                "text": "Fix it and measure again",
+                "minutes": 5
+              }
+            ],
+            "stretch": "Redact phone numbers and account numbers in span attributes"
           }
         },
         {
           "title": "Drift, skew and delayed labels",
+          "summary": "Monitors on inputs while labels are late, tuned so that a real shift alerts and a noisy day does not",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Compute a drift statistic per feature per day",
+            "Tell drift from training and serving skew",
+            "Tune thresholds and persistence to remove false alarms"
           ],
           "lo": [
             "LO4"
           ],
           "lab": {
             "id": "3.2",
-            "title": "Detect two planted shifts in a replayed month and tune thresholds to remove false alarms",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Two shifts in a replayed month",
             "minutes": 25,
-            "href": "D3_2_detect_two_planted.ipynb"
+            "summary": "Replay a month of classifier inputs with two planted shifts, alert naively and count the false alarms, then tune the threshold and persistence until only the two shifts alert.",
+            "href": "D3_2_drift_monitors.ipynb",
+            "steps": [
+              {
+                "text": "Drift per feature per day",
+                "minutes": 7
+              },
+              {
+                "text": "Naive alerts and their false alarms",
+                "minutes": 5
+              },
+              {
+                "text": "Tune threshold and persistence",
+                "minutes": 8
+              },
+              {
+                "text": "The note: shifts found, alarms removed",
+                "minutes": 5
+              }
+            ],
+            "stretch": "Measure skew between the training snapshot and serving for one feature"
           }
         },
         {
           "title": "Online evaluation and review queues",
+          "summary": "Sample live traces, grade them with a calibrated grader, correct for its errors and send failures to people",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Redact traces before storage and apply a retention rule",
+            "Grade a sample with a calibrated grader and correct the rate",
+            "Route failures and uncertain cases to a review queue"
           ],
           "lo": [
             "LO4"
           ],
           "lab": {
             "id": "3.3",
-            "title": "Score sampled live traces with a provided calibrated grader and route failures to review",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Online evaluation and a review queue",
             "minutes": 25,
-            "href": "D3_3_score_sampled_live.ipynb"
+            "summary": "Redact a week of Nabd traces, sample them, score them with the provided calibrated grader, correct the failure rate for the grader's error and route failures to review.",
+            "href": "D3_3_online_eval.ipynb",
+            "steps": [
+              {
+                "text": "Redact before storage",
+                "minutes": 6
+              },
+              {
+                "text": "Sample the week",
+                "minutes": 4
+              },
+              {
+                "text": "Grade with the calibrated grader",
+                "minutes": 6
+              },
+              {
+                "text": "Route to review and correct the rate",
+                "minutes": 9
+              }
+            ],
+            "stretch": "A retention rule that deletes traces past their limit"
           }
         },
         {
           "title": "Retraining and refresh policies",
+          "summary": "Retrain on a trigger only when labels are ready, the cost is known and a person approves",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Write a trigger from drift or a schedule that waits for labels",
+            "Estimate the cost of a retraining run",
+            "Require human approval and log the decision"
           ],
           "lo": [
-            "LO2"
+            "LO2",
+            "LO6"
           ],
           "lab": {
             "id": "3.4",
-            "title": "Write a retraining trigger with a cost estimate and human approval and test it on a drifted batch",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "A retraining trigger with a cost and an approval",
             "minutes": 25,
-            "href": "D3_4_write_retraining_trigger.ipynb"
+            "summary": "Write the retraining trigger with a cost estimate and a human approval, and test it end to end: the drifted batch promotes a new champion, the corrupt batch stops, both with registry lineage.",
+            "href": "D3_4_retraining_policy.ipynb",
+            "steps": [
+              {
+                "text": "Drift or schedule, and labels ready",
+                "minutes": 6
+              },
+              {
+                "text": "The cost estimate",
+                "minutes": 5
+              },
+              {
+                "text": "Human approval",
+                "minutes": 5
+              },
+              {
+                "text": "Test on the drifted and the corrupt batch",
+                "minutes": 9
+              }
+            ],
+            "stretch": "Treat the manuals index refresh as a release under the same policy"
           }
         }
-      ]
+      ],
+      "subtitle": "Spans for every step, drift monitors that do not cry wolf, online evaluation with a review queue, and a retraining policy"
     },
     {
       "id": "day4",
@@ -306,81 +577,172 @@
       "sessions": [
         {
           "title": "An agent is a bundle",
+          "summary": "Prompt, tools, harness settings and sandbox policy are versioned together, apart from the session log",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Separate the session log, the harness and the sandbox",
+            "Version an agent as one bundle with a content hash",
+            "Run the agent only from a released bundle"
           ],
           "lo": [
-            "LO1"
+            "LO1",
+            "LO5"
           ],
           "lab": {
             "id": "4.1",
-            "title": "Package the ticket agent's prompt, tools, harness settings and sandbox policy as one versioned bundle",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Mubadir as one versioned bundle",
             "minutes": 25,
-            "href": "D4_1_package_ticket_agent.ipynb"
+            "summary": "Package Mubadir's prompt, tool schemas, harness settings and sandbox policy as one bundle with a content version, change one tool and watch the version move, then run the agent from the bundle.",
+            "href": "D4_1_agent_bundle.ipynb",
+            "steps": [
+              {
+                "text": "What changes Mubadir's behaviour",
+                "minutes": 5
+              },
+              {
+                "text": "Build the bundle and its version",
+                "minutes": 8
+              },
+              {
+                "text": "Change one tool schema",
+                "minutes": 6
+              },
+              {
+                "text": "Run the agent from the bundle",
+                "minutes": 6
+              }
+            ],
+            "stretch": "Refuse to start when the running bundle is not the released one"
           }
         },
         {
           "title": "Durable execution and safe retries",
+          "summary": "Checkpoints let a crashed run resume; idempotency keys make a retry safe",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Resume a crashed agent run from its last checkpoint",
+            "Explain why a retry after a timeout can repeat a write",
+            "Make a write tool idempotent with a key"
           ],
           "lo": [
             "LO5"
           ],
           "lab": {
             "id": "4.2",
-            "title": "Crash the agent mid-task, resume from a checkpoint and fix a tool that duplicates tickets on retry",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Crash, resume, and no duplicate tickets",
             "minutes": 25,
-            "href": "D4_2_crash_agent_mid.ipynb"
+            "summary": "Run Mubadir's ticket flow as a checkpointed graph, crash it mid-task and resume, then reproduce the duplicate ticket a retry creates and fix the tool with an idempotency key.",
+            "href": "D4_2_durable_retries.ipynb",
+            "steps": [
+              {
+                "text": "The ticket graph with a checkpointer",
+                "minutes": 6
+              },
+              {
+                "text": "Crash mid-task and resume",
+                "minutes": 6
+              },
+              {
+                "text": "A retry after a timeout: two tickets",
+                "minutes": 6
+              },
+              {
+                "text": "An idempotency key: one ticket",
+                "minutes": 7
+              }
+            ],
+            "stretch": "Resume the session from a second process"
           }
         },
         {
           "title": "Replay to reproduce incidents",
+          "summary": "Recorded model and tool responses make an incident reproducible and turn it into a regression case",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Replay a recorded session deterministically",
+            "Find the cause of an incident in the replayed trace",
+            "Add the incident to the regression suite"
           ],
           "lo": [
             "LO5"
           ],
           "lab": {
             "id": "4.3",
-            "title": "Reproduce a recorded failure from stored tool responses and add it as a regression case",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Replay incident INC-0412",
             "minutes": 25,
-            "href": "D4_3_reproduce_recorded_failure.ipynb"
+            "summary": "Replay the recorded session in which Mubadir told a customer that power was back while the outage was live, find the cause in the trace, fix the harness and add the case to the regression suite.",
+            "href": "D4_3_replay_incident.ipynb",
+            "steps": [
+              {
+                "text": "Read the recorded trace",
+                "minutes": 5
+              },
+              {
+                "text": "Replay it: the same wrong answer",
+                "minutes": 7
+              },
+              {
+                "text": "Fix the harness",
+                "minutes": 7
+              },
+              {
+                "text": "The new regression case and the suite",
+                "minutes": 6
+              }
+            ],
+            "stretch": "Replay the whole suite against a new bundle"
           }
         },
         {
           "title": "Budgets, gateways and kill switches",
+          "summary": "Step and spend limits at the gateway, a kill switch per agent version, and sessions that survive the stop",
           "outcomes": [
-            "REPLACE: what a participant can do after this session"
+            "Set step and spend limits at a gateway",
+            "Stop a runaway agent with a kill switch",
+            "Keep the stopped sessions and hand them to a person"
           ],
           "lo": [
+            "LO5",
             "LO6"
           ],
           "lab": {
             "id": "4.4",
-            "title": "Set step and spend limits at the gateway and stop a runaway agent without losing its sessions",
-            "summary": "REPLACE: one line on what participants build and take away; then list the steps of the lab in course.json, their minutes adding up to 25",
+            "title": "Limits and a kill switch at the gateway",
             "minutes": 25,
-            "href": "D4_4_set_step_spend.ipynb"
+            "summary": "Let a runaway Mubadir session loop without limits, then set step and spend limits at the gateway, stop the agent version with the kill switch and hand its sessions to a person without losing them.",
+            "href": "D4_4_budgets_killswitch.ipynb",
+            "steps": [
+              {
+                "text": "The runaway session without limits",
+                "minutes": 4
+              },
+              {
+                "text": "Step and spend limits",
+                "minutes": 8
+              },
+              {
+                "text": "The kill switch",
+                "minutes": 7
+              },
+              {
+                "text": "Sessions kept and handed over",
+                "minutes": 6
+              }
+            ],
+            "stretch": "The same limits as a LiteLLM proxy configuration"
           }
         }
-      ]
+      ],
+      "subtitle": "The agent as a versioned bundle, durable and idempotent, replayed when it fails and stopped when it runs away"
     },
     {
       "id": "capstone",
       "kind": "capstone",
-      "title": "Capstone project presentations",
+      "title": "Capstone: a release week and its defence",
       "deck": "slides/capstone.html",
-      "subtitle": "REPLACE: the catalog gives 8 minutes for each presentation and nothing about questions; decide whether the questions are inside those minutes, set capstone.talk_minutes and capstone.qa_minutes in course.json and the timers of the now-presenting slide, and remove this line"
+      "subtitle": "Eight minutes per participant: the release log, the runbook and one injected fault diagnosed live; questions are inside the eight minutes"
     }
   ],
   "capstone": {
     "summary": "A simulated release week in which a corrupt batch, a provider model update and an agent incident arrive; the participant gates, ships or rolls back each and submits a public repository with pipeline logs, a release log and a runbook, then defends it for eight minutes while the assessor injects one further fault",
-    "submission": "REPLACE: what participants submit and how: a public repository link, or a shared folder for a course without code",
+    "submission": "A public GitHub repository with the pipeline logs, the release log, the runbook and timestamped trace files of the release week, built from the starter in labs/capstone/. Then an eight-minute live defence in which the assessor injects one further fault and the participant diagnoses it from traces and logs.",
     "talk_minutes": 8,
     "rubric": [
       {
@@ -476,6 +838,55 @@
       "examples": [
         "kind",
         "k3d"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "group": "Registries, pipelines and delivery",
+      "items": [
+        {
+          "title": "MLflow: Model Registry (aliases, tags, models:/name@alias)",
+          "url": "https://mlflow.org/docs/latest/ml/model-registry/"
+        },
+        {
+          "title": "Argo Rollouts: Canary strategy (setWeight, pause, analysis, abort)",
+          "url": "https://argo-rollouts.readthedocs.io/en/stable/features/canary/"
+        },
+        {
+          "title": "GitHub Docs: Deployments and environments (required reviewers)",
+          "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments"
+        }
+      ]
+    },
+    {
+      "group": "Observation and gateways",
+      "items": [
+        {
+          "title": "OpenTelemetry: Semantic conventions for generative AI spans",
+          "url": "https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md"
+        },
+        {
+          "title": "LiteLLM: Budgets and rate limits for keys, users and teams",
+          "url": "https://docs.litellm.ai/docs/proxy/users"
+        }
+      ]
+    },
+    {
+      "group": "National references",
+      "items": [
+        {
+          "title": "SDAIA: Personal Data Protection Law",
+          "url": "https://sdaia.gov.sa/en/SDAIA/about/Documents/PersonalDataProtectionLaw.pdf"
+        },
+        {
+          "title": "SDAIA (NDMO): Data Classification Policy",
+          "url": "https://sdaia.gov.sa/en/SDAIA/about/Documents/DataClassificationPolicy.pdf"
+        },
+        {
+          "title": "SDAIA (NDMO): Data Management and Personal Data Protection Standards",
+          "url": "https://sdaia.gov.sa/en/SDAIA/about/Documents/DataManagementPersonalDataProtectionStandards.pdf"
+        }
       ]
     }
   ]

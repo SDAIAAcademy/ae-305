@@ -5,7 +5,7 @@
 
 AI Engineering Track · SDAIA Academy · AE-305 · Level 300
 
-REPLACE: one line under the title: what participants can do after the course
+Run models, assistants and agents in production as versioned releases that are gated, observed and safe to roll back
 
 Participants run three systems of a fictional electricity distribution company in production: a fault-risk classifier retrained on monthly batches with planted drift, a field-crew assistant with retrieval and two tools, and an outage-ticket agent. They version everything that changes behaviour as one release unit, build pipelines with validation and promotion gates, release through canary stages with automatic rollback, trace requests, monitor drift and online quality, and keep the agent alive through crashes and runaway loops. Evaluators come ready-made from AE-303.
 
@@ -34,7 +34,7 @@ Participants run three systems of a fictional electricity distribution company i
 | Day 2 | Deliver | Continuous delivery for models; Language model releases; Shadow and canary on evidence; Cost and capacity signals | [`slides/day2.html`](slides/day2.html) |
 | Day 3 | Observe | Tracing requests end to end; Drift, skew and delayed labels; Online evaluation and review queues; Retraining and refresh policies | [`slides/day3.html`](slides/day3.html) |
 | Day 4 | Operate agents | An agent is a bundle; Durable execution and safe retries; Replay to reproduce incidents; Budgets, gateways and kill switches | [`slides/day4.html`](slides/day4.html) |
-| Capstone | Capstone project presentations |  | [`slides/capstone.html`](slides/capstone.html) |
+| Capstone | Capstone: a release week and its defence |  | [`slides/capstone.html`](slides/capstone.html) |
 <!-- /academy:units -->
 
 ## Case study
@@ -48,22 +48,22 @@ Every lab is a notebook in `labs/`. Open it in Google Colab from the course page
 
 | | Session | Lab | File |
 |---|---|---|---|
-| 1.1 | Day 1 · Session 1 | Write a release manifest for the three systems and find the unrecorded change between two runs | [`D1_1_write_release_manifest.ipynb`](labs/D1_1_write_release_manifest.ipynb) |
-| 1.2 | Day 1 · Session 2 | Reproduce a colleague's model from the registry and trace it to its data snapshot and commit | [`D1_2_reproduce_colleague_s.ipynb`](labs/D1_2_reproduce_colleague_s.ipynb) |
-| 1.3 | Day 1 · Session 3 | Add a validation step that stops training on a corrupt monthly batch | [`D1_3_add_validation_step.ipynb`](labs/D1_3_add_validation_step.ipynb) |
-| 1.4 | Day 1 · Session 4 | Compare a challenger with the champion overall and by region and promote only if both pass | [`D1_4_compare_challenger_champion.ipynb`](labs/D1_4_compare_challenger_champion.ipynb) |
-| 2.1 | Day 2 · Session 1 | Wire merge to staging to production with an approval step | [`D2_1_wire_merge_staging.ipynb`](labs/D2_1_wire_merge_staging.ipynb) |
-| 2.2 | Day 2 · Session 2 | Run a prompt edit, a model swap and an index refresh through a provided evaluation gate | [`D2_2_run_prompt_edit.ipynb`](labs/D2_2_run_prompt_edit.ipynb) |
-| 2.3 | Day 2 · Session 3 | Canary a model swap on replayed traffic and let a quality and latency trigger roll it back | [`D2_3_canary_model_swap.ipynb`](labs/D2_3_canary_model_swap.ipynb) |
-| 2.4 | Day 2 · Session 4 | Compute cost per successful outcome and utilisation per system and set a budget alert | [`D2_4_compute_cost_per.ipynb`](labs/D2_4_compute_cost_per.ipynb) |
-| 3.1 | Day 3 · Session 1 | Add spans for model, retrieval and tool calls to the assistant and find the slowest step | [`D3_1_add_spans_model.ipynb`](labs/D3_1_add_spans_model.ipynb) |
-| 3.2 | Day 3 · Session 2 | Detect two planted shifts in a replayed month and tune thresholds to remove false alarms | [`D3_2_detect_two_planted.ipynb`](labs/D3_2_detect_two_planted.ipynb) |
-| 3.3 | Day 3 · Session 3 | Score sampled live traces with a provided calibrated grader and route failures to review | [`D3_3_score_sampled_live.ipynb`](labs/D3_3_score_sampled_live.ipynb) |
-| 3.4 | Day 3 · Session 4 | Write a retraining trigger with a cost estimate and human approval and test it on a drifted batch | [`D3_4_write_retraining_trigger.ipynb`](labs/D3_4_write_retraining_trigger.ipynb) |
-| 4.1 | Day 4 · Session 1 | Package the ticket agent's prompt, tools, harness settings and sandbox policy as one versioned bundle | [`D4_1_package_ticket_agent.ipynb`](labs/D4_1_package_ticket_agent.ipynb) |
-| 4.2 | Day 4 · Session 2 | Crash the agent mid-task, resume from a checkpoint and fix a tool that duplicates tickets on retry | [`D4_2_crash_agent_mid.ipynb`](labs/D4_2_crash_agent_mid.ipynb) |
-| 4.3 | Day 4 · Session 3 | Reproduce a recorded failure from stored tool responses and add it as a regression case | [`D4_3_reproduce_recorded_failure.ipynb`](labs/D4_3_reproduce_recorded_failure.ipynb) |
-| 4.4 | Day 4 · Session 4 | Set step and spend limits at the gateway and stop a runaway agent without losing its sessions | [`D4_4_set_step_spend.ipynb`](labs/D4_4_set_step_spend.ipynb) |
+| 1.1 | Day 1 · Session 1 | A release manifest and the unrecorded change | [`D1_1_release_manifest.ipynb`](labs/D1_1_release_manifest.ipynb) |
+| 1.2 | Day 1 · Session 2 | Reproduce a model from the registry | [`D1_2_registry_lineage.ipynb`](labs/D1_2_registry_lineage.ipynb) |
+| 1.3 | Day 1 · Session 3 | A validation step that stops training | [`D1_3_validation_step.ipynb`](labs/D1_3_validation_step.ipynb) |
+| 1.4 | Day 1 · Session 4 | Champion, challenger and the regional gate | [`D1_4_promotion_gate.ipynb`](labs/D1_4_promotion_gate.ipynb) |
+| 2.1 | Day 2 · Session 1 | Merge to staging to production | [`D2_1_delivery_pipeline.ipynb`](labs/D2_1_delivery_pipeline.ipynb) |
+| 2.2 | Day 2 · Session 2 | Three changes through the evaluation gate | [`D2_2_llm_release_gate.ipynb`](labs/D2_2_llm_release_gate.ipynb) |
+| 2.3 | Day 2 · Session 3 | A canary that rolls itself back | [`D2_3_canary_rollback.ipynb`](labs/D2_3_canary_rollback.ipynb) |
+| 2.4 | Day 2 · Session 4 | Cost per successful outcome | [`D2_4_cost_signals.ipynb`](labs/D2_4_cost_signals.ipynb) |
+| 3.1 | Day 3 · Session 1 | Spans for Nabd and the slowest step | [`D3_1_tracing.ipynb`](labs/D3_1_tracing.ipynb) |
+| 3.2 | Day 3 · Session 2 | Two shifts in a replayed month | [`D3_2_drift_monitors.ipynb`](labs/D3_2_drift_monitors.ipynb) |
+| 3.3 | Day 3 · Session 3 | Online evaluation and a review queue | [`D3_3_online_eval.ipynb`](labs/D3_3_online_eval.ipynb) |
+| 3.4 | Day 3 · Session 4 | A retraining trigger with a cost and an approval | [`D3_4_retraining_policy.ipynb`](labs/D3_4_retraining_policy.ipynb) |
+| 4.1 | Day 4 · Session 1 | Mubadir as one versioned bundle | [`D4_1_agent_bundle.ipynb`](labs/D4_1_agent_bundle.ipynb) |
+| 4.2 | Day 4 · Session 2 | Crash, resume, and no duplicate tickets | [`D4_2_durable_retries.ipynb`](labs/D4_2_durable_retries.ipynb) |
+| 4.3 | Day 4 · Session 3 | Replay incident INC-0412 | [`D4_3_replay_incident.ipynb`](labs/D4_3_replay_incident.ipynb) |
+| 4.4 | Day 4 · Session 4 | Limits and a kill switch at the gateway | [`D4_4_budgets_killswitch.ipynb`](labs/D4_4_budgets_killswitch.ipynb) |
 <!-- /academy:labs -->
 
 ## Capstone
@@ -99,7 +99,22 @@ Each line is a capability; the examples are interchangeable.
 <!-- academy:sources -->
 ## Sources
 
-- REPLACE: every source the course cites, with its address, in course.json under "sources"; this list is written from there
+### Registries, pipelines and delivery
+
+- [MLflow: Model Registry (aliases, tags, models:/name@alias)](https://mlflow.org/docs/latest/ml/model-registry/)
+- [Argo Rollouts: Canary strategy (setWeight, pause, analysis, abort)](https://argo-rollouts.readthedocs.io/en/stable/features/canary/)
+- [GitHub Docs: Deployments and environments (required reviewers)](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
+
+### Observation and gateways
+
+- [OpenTelemetry: Semantic conventions for generative AI spans](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md)
+- [LiteLLM: Budgets and rate limits for keys, users and teams](https://docs.litellm.ai/docs/proxy/users)
+
+### National references
+
+- [SDAIA: Personal Data Protection Law](https://sdaia.gov.sa/en/SDAIA/about/Documents/PersonalDataProtectionLaw.pdf)
+- [SDAIA (NDMO): Data Classification Policy](https://sdaia.gov.sa/en/SDAIA/about/Documents/DataClassificationPolicy.pdf)
+- [SDAIA (NDMO): Data Management and Personal Data Protection Standards](https://sdaia.gov.sa/en/SDAIA/about/Documents/DataManagementPersonalDataProtectionStandards.pdf)
 <!-- /academy:sources -->
 
 ### National references
