@@ -1,7 +1,7 @@
 ---
 course: "Operating Machine Learning and Language Model Systems"
 code: "AE-305"
-version: "2027.1.0"
+version: "2027.2.0"
 language: "en"
 view: "trainee"
 source: "https://sdaiaacademy.github.io/ae-305/index.html"
@@ -198,4 +198,4 @@ A simulated release week in which a corrupt batch, a provider model update and a
 
 SDAIA Academy · AI Engineering Track · Operating Machine Learning and Language Model Systems
 
-Course version 2027.1.0 · engine 1.0.0 · built 2026-11-15 · commit 42f68a3
+Course version 2027.2.0 · engine 1.0.0 · built 2026-11-24 · commit fd96777

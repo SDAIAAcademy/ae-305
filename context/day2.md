@@ -1,7 +1,7 @@
 ---
 course: "Operating Machine Learning and Language Model Systems"
 code: "AE-305"
-version: "2027.1.0"
+version: "2027.2.0"
 deck: "day2"
 day: 2
 language: "en"
@@ -323,7 +323,7 @@ return "pass", why
 
 **setWeight 5** pause 60 min → **setWeight 25** pause 30 min → **setWeight 50** pause 30 min → **100** promote
 
-In Argo Rollouts, `steps` hold `setWeight` and `pause`; a background `analysis` that fails aborts the rollout and traffic returns to the stable version.
+A failed `analysis` aborts the rollout; traffic returns to the stable version.
 
 #### [day2#rolled-back-at-25] 5% passed; at 25% the latency trigger rolled the canary back
 
@@ -344,6 +344,39 @@ In Argo Rollouts, `steps` hold `setWeight` and `pause`; a background `analysis` 
 - **Canary at 25%.** 43% Arabic: failed on latency and quality.
 
 > **Fix the instruments too.** Add Arabic cases to the offline set and run the shadow across a shift change before the next canary.
+
+#### [day2#pilot-region-not-evidence] Mubadir's pilot region repeats 12.8 points less, and it already did before the change
+
+*When the outcome comes later than the answer*
+
+| Repeat contact within 24 h | Al-Sahil | other regions | gap |
+| --- | --- | --- | --- |
+| month before, old replies everywhere | 0.167 | 0.271 | -0.104 |
+| pilot month, new replies in Al-Sahil | 0.135 | 0.263 | -0.128 |
+
+- Graders preferred the new reply style offline. The outcome that matters, a customer calling again, cannot be graded on the same request.
+- Al-Sahil's customers differ: shorter outages, a different mix of calls. The gap is mostly the region, not the replies.
+
+#### [day2#randomise-assignment] Assign accounts at random, so the two groups differ only by the reply style
+
+*A randomised live comparison*
+
+```python
+# file: Assignment
+h = int(sha256(salt + account), 16)
+arm = "new" if h % 2 else "current"
+# every region and account, fixed in advance
+# outcome: repeat contact within 24 hours
+```
+
+| Next month, randomised | value |
+| --- | --- |
+| new style, n 6,133 | 0.233 |
+| current style, n 6,267 | 0.243 |
+| difference, 95% interval | -0.010 (-0.025 to +0.004) |
+| Al-Sahil share of each arm | 0.18 and 0.19 |
+
+The interval includes zero: no gain of the 2 points this month could detect. Keep the current style, or run longer if 1 point is worth it.
 
 #### [day2#checkpoint-3] A clean first window
 

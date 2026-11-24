@@ -2,9 +2,9 @@
   "v": 1,
   "engine": "1.0.0",
   "build": {
-    "at": "2026-11-15T16:00:10Z",
-    "version": "2027.1.0",
-    "commit": "42f68a3"
+    "at": "2026-11-24T14:56:18Z",
+    "version": "2027.2.0",
+    "commit": "fd96777"
   },
   "lang": "en",
   "dir": "ltr",
@@ -15,7 +15,7 @@
   "course": {
     "id": "ae-305",
     "code": "AE-305",
-    "version": "2027.1.0",
+    "version": "2027.2.0",
     "title": "Operating Machine Learning and Language Model Systems",
     "tagline": "Run models, assistants and agents in production as versioned releases that are gated, observed and safe to roll back",
     "description": "Participants run three systems of a fictional electricity distribution company in production: a fault-risk classifier retrained on monthly batches with planted drift, a field-crew assistant with retrieval and two tools, and an outage-ticket agent. They version everything that changes behaviour as one release unit, build pipelines with validation and promotion gates, release through canary stages with automatic rollback, trace requests, monitor drift and online quality, and keep the agent alive through crashes and runaway loops. Evaluators come ready-made from AE-303.",

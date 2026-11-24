@@ -1,7 +1,7 @@
 ---
 course: "Operating Machine Learning and Language Model Systems"
 code: "AE-305"
-version: "2027.1.0"
+version: "2027.2.0"
 scope: "course"
 language: "en"
 view: "trainee"
@@ -823,7 +823,7 @@ return "pass", why
 
 **setWeight 5** pause 60 min → **setWeight 25** pause 30 min → **setWeight 50** pause 30 min → **100** promote
 
-In Argo Rollouts, `steps` hold `setWeight` and `pause`; a background `analysis` that fails aborts the rollout and traffic returns to the stable version.
+A failed `analysis` aborts the rollout; traffic returns to the stable version.
 
 #### [day2#rolled-back-at-25] 5% passed; at 25% the latency trigger rolled the canary back
 
@@ -844,6 +844,39 @@ In Argo Rollouts, `steps` hold `setWeight` and `pause`; a background `analysis` 
 - **Canary at 25%.** 43% Arabic: failed on latency and quality.
 
 > **Fix the instruments too.** Add Arabic cases to the offline set and run the shadow across a shift change before the next canary.
+
+#### [day2#pilot-region-not-evidence] Mubadir's pilot region repeats 12.8 points less, and it already did before the change
+
+*When the outcome comes later than the answer*
+
+| Repeat contact within 24 h | Al-Sahil | other regions | gap |
+| --- | --- | --- | --- |
+| month before, old replies everywhere | 0.167 | 0.271 | -0.104 |
+| pilot month, new replies in Al-Sahil | 0.135 | 0.263 | -0.128 |
+
+- Graders preferred the new reply style offline. The outcome that matters, a customer calling again, cannot be graded on the same request.
+- Al-Sahil's customers differ: shorter outages, a different mix of calls. The gap is mostly the region, not the replies.
+
+#### [day2#randomise-assignment] Assign accounts at random, so the two groups differ only by the reply style
+
+*A randomised live comparison*
+
+```python
+# file: Assignment
+h = int(sha256(salt + account), 16)
+arm = "new" if h % 2 else "current"
+# every region and account, fixed in advance
+# outcome: repeat contact within 24 hours
+```
+
+| Next month, randomised | value |
+| --- | --- |
+| new style, n 6,133 | 0.233 |
+| current style, n 6,267 | 0.243 |
+| difference, 95% interval | -0.010 (-0.025 to +0.004) |
+| Al-Sahil share of each arm | 0.18 and 0.19 |
+
+The interval includes zero: no gain of the 2 points this month could detect. Keep the current style, or run longer if 1 point is worth it.
 
 #### [day2#checkpoint-3] A clean first window
 
@@ -1210,7 +1243,32 @@ Stretch: the median ratio of serving load to the same feeder's batch load steps 
 - Monthly: against the training snapshot, for slow moves that matter.
 - When labels arrive: the model's own metrics by region, which inputs cannot replace.
 
-> **Three files leave the lab.** The dashboard (PSI per feature per day, with the threshold and the alerts), the alert rules, and the note: shifts found, alarms removed and by which rule, what is no longer visible. Lamya signs the note.
+> **Three files leave the lab.** The dashboard, the alert rules, and the note: shifts found, alarms removed, what is no longer visible. Lamya signs the note.
+
+#### [day3#shadow-early-outcomes] After 14 days of shadow scoring, the outcomes in hand are not a fair sample
+
+*A replacement scored in shadow*
+
+**338 of 499** faults of the month reported after 14 days, in a replayed month where both models score every feeder
+
+| Al-Jabal's share | value |
+| --- | --- |
+| of the faults reported so far | 0.10 |
+| of all the month's faults | 0.24 |
+
+Early AUC: champion 0.706, replacement 0.724. The missing outcomes sit in Al-Jabal, where the replacement differs most, so this gap says little.
+
+#### [day3#shadow-more-evidence] Add evidence that does not wait: a backtest, the disagreements and a sample inspected now
+
+*What to add while the outcomes are late*
+
+| Evidence | Result | What it tells you |
+| --- | --- | --- |
+| Backtest on the last month with complete labels | AUC 0.731 → 0.742; Al-Jabal 0.740 → 0.827 | the gain, by region, on mature outcomes |
+| Shadow agreement on today's feeders | top-10% overlap 0.48; 38% of the replacement-only feeders in Al-Jabal | where the two lists differ |
+| 40 random feeders from each disagreement list, inspected now | defects 13 (replacement only), 8 (champion only) | an early, unbiased check on the disagreement |
+
+Promote on the backtest and the inspected sample, and still score the shadow fortnight when its outcomes mature.
 
 #### [day3#checkpoint-2] One hot day
 
@@ -1380,7 +1438,34 @@ Redact a week of Nabd traces, sample them, score them with the provided calibrat
 
 - Compute is the small part here.
 - The larger costs: the reviewer's hour, a worse model in one region, a rollback.
-- For a fine-tuned language model the compute line can dominate: estimate before running.
+
+#### [day3#retraining-interval] Choose the interval where the cost of runs and the loss from an ageing model add up least
+
+*How often to retrain on a schedule*
+
+```text
+# file: Per year
+runs  = 12 / k × 1,500 SAR
+stale = 12 × 1,920 SAR × (k - 1) / 2
+        (AUC falls 0.008 a month;
+         0.01 AUC = 2 missed faults
+         at 1,200 SAR each)
+```
+
+| Every k months | runs | stale | total |
+| --- | --- | --- | --- |
+| 1 | 18,000 | 0 | 18,000 |
+| 2 | 9,000 | 11,520 | 20,520 |
+| 3 | 6,000 | 23,040 | 29,040 |
+| 6 | 3,000 | 57,600 | 60,600 |
+
+#### [day3#interval-follows-decay] When the model ages four times slower, every three months is cheapest
+
+*The same sum, a slower model*
+
+- **Dusty months.** AUC falls 0.008 a month: monthly, 18,000 SAR a year.
+- **Cool months.** AUC falls 0.002 a month: every 3 months, 11,760 SAR; monthly would cost 18,000.
+- **A trigger still applies.** The interval is the longest wait; drift with complete labels can start a run sooner.
 
 #### [day3#human-approval] The pipeline trains and gates on its own; a person approves the promotion
 
