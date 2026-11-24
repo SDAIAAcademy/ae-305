@@ -218,8 +218,36 @@ psi = sum((cur - ref) * ln(cur / ref))</code></pre>
     <li>Monthly: against the training snapshot, for slow moves that matter.</li>
     <li>When labels arrive: the model's own metrics by region, which inputs cannot replace.</li>
   </ul>
-  <div class="callout tip small mt"><b>Three files leave the lab.</b> The dashboard (PSI per feature per day, with the threshold and the alerts), the alert rules, and the note: shifts found, alarms removed and by which rule, what is no longer visible. Lamya signs the note.</div>
-  <aside class="notes"><p>Inputs can move without hurting the model, and the model can fail with stable inputs. Session 4 turns the alerts into a retraining decision. The lab draws the dashboard as one image and writes the rules as a JSON file, so both run anywhere; in production the same series go to Prometheus and Grafana, or to a tool such as Evidently, and the rules become alert rules there.</p></aside>
+  <div class="callout tip small mt"><b>Three files leave the lab.</b> The dashboard, the alert rules, and the note: shifts found, alarms removed, what is no longer visible. Lamya signs the note.</div>
+  <aside class="notes"><p>Inputs can move without hurting the model, and the model can fail with stable inputs. Session 4 turns the alerts into a retraining decision. The dashboard plots PSI per feature per day with the threshold and the alerts. The lab draws it as one image and writes the rules as a JSON file, so both run anywhere; in production the same series go to Prometheus and Grafana, or to a tool such as Evidently, and the rules become alert rules there.</p></aside>
+</section>
+
+<section class="slide" data-label="Early outcomes" id="shadow-early-outcomes" data-lo="LO4">
+  <div class="kicker">A replacement scored in shadow</div>
+  <h2>After 14 days of shadow scoring, the outcomes in hand are not a fair sample</h2>
+  <div class="cols cols-2">
+    <div class="stat"><div class="big">338 of 499</div><div class="lbl">faults of the month reported after 14 days, in a replayed month where both models score every feeder</div></div>
+    <table class="t small">
+      <tr><th>Al-Jabal's share</th><th class="num">value</th></tr>
+      <tr><td>of the faults reported so far</td><td class="num">0.10</td></tr>
+      <tr><td>of all the month's faults</td><td class="num">0.24</td></tr>
+    </table>
+  </div>
+  <p class="small mt">Early AUC: champion 0.706, replacement 0.724. The missing outcomes sit in Al-Jabal, where the replacement differs most, so this gap says little.</p>
+  <aside class="notes"><p>The replacement adds a dust effect in the mountains. Al-Jabal faults are found late, by inspection, so a gap measured on early outcomes leaves out exactly the feeders where the two models disagree. Synthetic figures from labs/_tools/decision_figures.py (part A).</p></aside>
+</section>
+
+<section class="slide" data-label="More evidence" id="shadow-more-evidence" data-lo="LO4">
+  <div class="kicker">What to add while the outcomes are late</div>
+  <h2>Add evidence that does not wait: a backtest, the disagreements and a sample inspected now</h2>
+  <table class="t small">
+    <tr><th>Evidence</th><th>Result</th><th>What it tells you</th></tr>
+    <tr><td>Backtest on the last month with complete labels</td><td>AUC 0.731 → 0.742; Al-Jabal 0.740 → 0.827</td><td>the gain, by region, on mature outcomes</td></tr>
+    <tr><td>Shadow agreement on today's feeders</td><td>top-10% overlap 0.48; 38% of the replacement-only feeders in Al-Jabal</td><td>where the two lists differ</td></tr>
+    <tr class="hl"><td>40 random feeders from each disagreement list, inspected now</td><td>defects 13 (replacement only), 8 (champion only)</td><td>an early, unbiased check on the disagreement</td></tr>
+  </table>
+  <p class="small mt">Promote on the backtest and the inspected sample, and still score the shadow fortnight when its outcomes mature.</p>
+  <aside class="notes"><p>13 against 8 out of 40 is a small sample: it points the same way as the backtest, it does not prove the gain alone. The inspected feeders must be drawn at random from each list, or the crews pick the easy ones. Truth, known only because the data is invented: AUC 0.711 and 0.739 at day 60. Parallel example: a spare-transformer forecast whose actuals close at quarter end. Backtest on the last closed quarter, compare the depots where the two forecasts differ most, and count stock at a random few of them now.</p></aside>
 </section>
 
 <section class="slide" id="checkpoint-2" data-lo="LO4">
@@ -391,10 +419,40 @@ psi = sum((cur - ref) * ln(cur / ref))</code></pre>
     <ul class="bullets small">
       <li>Compute is the small part here.</li>
       <li>The larger costs: the reviewer's hour, a worse model in one region, a rollback.</li>
-      <li>For a fine-tuned language model the compute line can dominate: estimate before running.</li>
     </ul>
   </div>
-  <aside class="notes"><p>The figure comes from Lab 2.4's October log: 3 October used about 14 node-hours more than a normal day. Prices are course assumptions. Day 2's forecast alert fired on the classifier because of this run: the policy now declares it as a planned job.</p></aside>
+  <aside class="notes"><p>The figure comes from Lab 2.4's October log: 3 October used about 14 node-hours more than a normal day. Prices are course assumptions. Day 2's forecast alert fired on the classifier because of this run: the policy now declares it as a planned job. For a fine-tuned language model the compute line can dominate: estimate it before running.</p></aside>
+</section>
+
+<section class="slide" data-label="Interval" id="retraining-interval" data-lo="LO2 LO6">
+  <div class="kicker">How often to retrain on a schedule</div>
+  <h2>Choose the interval where the cost of runs and the loss from an ageing model add up least</h2>
+  <div class="cols cols-2">
+    <pre class="code s" data-file="Per year"><code class="language-text">runs  = 12 / k × 1,500 SAR
+stale = 12 × 1,920 SAR × (k - 1) / 2
+        (AUC falls 0.008 a month;
+         0.01 AUC = 2 missed faults
+         at 1,200 SAR each)</code></pre>
+    <table class="t small">
+      <tr><th>Every k months</th><th class="num">runs</th><th class="num">stale</th><th class="num">total</th></tr>
+      <tr class="hl"><td>1</td><td class="num">18,000</td><td class="num">0</td><td class="num">18,000</td></tr>
+      <tr><td>2</td><td class="num">9,000</td><td class="num">11,520</td><td class="num">20,520</td></tr>
+      <tr><td>3</td><td class="num">6,000</td><td class="num">23,040</td><td class="num">29,040</td></tr>
+      <tr><td>6</td><td class="num">3,000</td><td class="num">57,600</td><td class="num">60,600</td></tr>
+    </table>
+  </div>
+  <aside class="notes"><p>A run costs 1,500 SAR here: people's time for the gate and the approval, compute and the release. Compute is the 6 SAR of the last slide. All costs and the decay rate are course assumptions; estimate the decay with a backtest (train on one month, score the next few). The label delay adds the same age to every row, so it does not change the choice. Figures from labs/_tools/decision_figures.py (part C).</p></aside>
+</section>
+
+<section class="slide" data-label="Decay decides" id="interval-follows-decay" data-lo="LO2 LO6">
+  <div class="kicker">The same sum, a slower model</div>
+  <h2>When the model ages four times slower, every three months is cheapest</h2>
+  <div class="cols cols-3 gap-s">
+    <div class="card c-coral"><h4>Dusty months</h4><p class="small mb0">AUC falls 0.008 a month: monthly, 18,000 SAR a year.</p></div>
+    <div class="card c-teal"><h4>Cool months</h4><p class="small mb0">AUC falls 0.002 a month: every 3 months, 11,760 SAR; monthly would cost 18,000.</p></div>
+    <div class="card c-cyan"><h4>A trigger still applies</h4><p class="small mb0">The interval is the longest wait; drift with complete labels can start a run sooner.</p></div>
+  </div>
+  <aside class="notes"><p>Ask: what makes the interval shorter? A faster decay, a cheaper run or a costlier missed fault. Every 2 months in the cool months costs 11,880 SAR, almost the same as 3: when totals are this close, pick the interval that fits the label calendar and the reviewers' time.</p></aside>
 </section>
 
 <section class="slide" data-label="Approval" id="human-approval" data-lo="LO2">

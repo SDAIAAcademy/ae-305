@@ -554,6 +554,35 @@
       "weight": 1
     },
     {
+      "id": "q-d2-random-assign",
+      "type": "single",
+      "prompt": "A new reply style for Mubadir won offline. It went live in one region first, and that region now has 9 points fewer repeat contacts than the others. How do you measure the style's own effect?",
+      "options": [
+        "Compare the region with the other five regions again over the next month",
+        "Compare the region with its own month before the change",
+        "Assign accounts at random in every region and compare the two arms",
+        "Grade the new replies with the offline grader on live traffic"
+      ],
+      "correct": [
+        2
+      ],
+      "explanation": "Random assignment makes the two groups alike in everything but the style, so the difference left is the style plus chance, which the interval measures.",
+      "misconceptions": [
+        "Keeps the region's own differences inside the comparison",
+        "Mixes the style with everything else that changed between the months",
+        "",
+        "Measures the reply again, not the customer's later outcome"
+      ],
+      "lo": [
+        "LO3"
+      ],
+      "day": "day2",
+      "session": 3,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
       "id": "q-d2-cost-per-success",
       "type": "single",
       "prompt": "A configuration halves Mubadir's cost per model call, but its resolved share drops from 0.70 to 0.40. About how does the cost per resolved report change?",
@@ -902,6 +931,35 @@
       "weight": 1
     },
     {
+      "id": "q-d3-shadow-evidence",
+      "type": "single",
+      "prompt": "A replacement fault-risk model has been scored in shadow for two weeks. Faults reported so far favour it slightly, but most Al-Jabal faults are found weeks later. What should you add before deciding?",
+      "options": [
+        "Two more weeks of the same early faults",
+        "A lower alert threshold on the shadow scores",
+        "The share of today's feeders on which the two models' top lists agree",
+        "A backtest on a complete month and a random inspected sample"
+      ],
+      "correct": [
+        3
+      ],
+      "explanation": "Early outcomes leave out the late region where the models differ; a backtest on mature labels and an inspected random sample from the disagreements give evidence now.",
+      "misconceptions": [
+        "Adds more of the same biased sample",
+        "Changes the decision rule instead of adding evidence",
+        "Shows where the models differ but not which one is right",
+        ""
+      ],
+      "lo": [
+        "LO4"
+      ],
+      "day": "day3",
+      "session": 2,
+      "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
       "id": "q-d3-redact-when",
       "type": "single",
       "prompt": "Where in the online evaluation should personal data be removed from Nabd's traces?",
@@ -1130,6 +1188,35 @@
       "day": "day3",
       "session": 4,
       "level": "analyze",
+      "pool": "practice",
+      "weight": 1
+    },
+    {
+      "id": "q-d3-retrain-interval",
+      "type": "single",
+      "prompt": "A run costs 1,500 SAR. Each month a model ages costs 480 SAR a month in missed faults. Monthly runs cost 18,000 SAR a year; every 2 months 11,880; every 3 months 11,760; every 6 months 17,400. Which interval do you choose?",
+      "options": [
+        "Every 3 months",
+        "Every month",
+        "Every 6 months",
+        "As often as the budget allows"
+      ],
+      "correct": [
+        0
+      ],
+      "explanation": "The interval with the lowest total of runs and staleness wins; a drift trigger can still start a run sooner.",
+      "misconceptions": [
+        "",
+        "Pays for runs that buy little when the model ages slowly",
+        "Saves on runs but loses more to an old model",
+        "Spends to the budget instead of weighing the loss"
+      ],
+      "lo": [
+        "LO6"
+      ],
+      "day": "day3",
+      "session": 4,
+      "level": "apply",
       "pool": "practice",
       "weight": 1
     },
